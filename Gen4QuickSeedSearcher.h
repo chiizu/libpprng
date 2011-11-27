@@ -18,41 +18,51 @@
   along with libpprng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HASHED_SEED_SEARCHER_H
-#define HASHED_SEED_SEARCHER_H
-
+#ifndef GEN_4_QUICK_SEED_SEARCHER_H
+#define GEN_4_QUICK_SEED_SEARCHER_H
 
 #include "BasicTypes.h"
-#include "SeedGenerator.h"
 #include "SeedSearcher.h"
 #include "FrameGenerator.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace pprng
 {
 
-class HashedSeedSearcher
+class Gen4QuickSeedSearcher
 {
 public:
-  typedef SeedSearcher<HashedIVFrameGenerator>  SeedSearcherType;
-  typedef SeedSearcherType::Frame               Frame;
-  typedef SeedSearcherType::ResultCallback      ResultCallback;
-  typedef SeedSearcherType::ProgressCallback    ProgressCallback;
-  
-  struct Criteria : public SeedSearchCriteria
+  struct Criteria
   {
-    HashedSeedGenerator::Parameters  seedParameters;
-    SeedSearchCriteria::IVCriteria   ivs;
-    SeedSearcherType::FrameRange     ivFrame;
+    uint32_t       minDelay, maxDelay;
+    uint32_t       minFrame, maxFrame;
+    bool           shouldCheckMaxIVs;
+    IVs            minIVs, maxIVs;
+    Element::Type  hiddenType;
+    uint32_t       minHiddenPower, maxHiddenPower;
     
-    Criteria()
-      : SeedSearchCriteria(), seedParameters(), ivs(), ivFrame()
-    {}
+    bool           shinyOnly;
+    uint32_t       tid, sid;
+    Nature::Type   nature;
+    uint32_t       ability;
+    Gender::Type   gender;
+    Gender::Ratio  genderRatio;
     
-    uint64_t ExpectedNumberOfResults() const;
+    Game::Version  version;
+    
+    uint32_t       landESVs;
+    uint32_t       surfESVs;
+    uint32_t       oldRodESVs;
+    uint32_t       goodRodESVs;
+    uint32_t       superRodESVs;
+    
+    uint64_t ExpectedNumberOfResults();
   };
   
-  HashedSeedSearcher() {}
+  Gen4QuickSeedSearcher() {}
+  
+  typedef Gen4Frame                               Frame;
+  typedef boost::function<void (const Frame&)>    ResultCallback;
+  typedef boost::function<bool (double percent)>  ProgressCallback;
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
               const ProgressCallback &progressHandler);
