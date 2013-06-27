@@ -1,0 +1,35 @@
+This is the top level of the libpprng source directory.
+
+libpprng is copyright (C) 2011-2013 chiizu (chiizu.pprng@gmail.com), and is
+licensed under the the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.  Please see the file COPYING in this directory for a
+copy of the GNU General Public License.
+
+Additional copyright information also exists for some sources in this tree.
+Please see the specific sources for more information.
+
+
+
+Pokémon and associated names are covered by the following copyrights.
+Copyright (c) 2002-2011 Pokémon.
+Copyright (c) 1995-2011 Nintendo/Creatures Inc./GAME FREAK inc.
+
+Pokémon and associated names are Trademarks of Nintendo.
+
+No copyright or trademark infringement is intended in using Pokémon content in
+this software.
+
+
+libpprng is a platform-independent C++ library containing classes and functions
+for searching for and manipulating seed values of the pseudo-random number
+generators used in the Pokémon series of video games, currently covering
+Generation 5 and significant parts of Generation 4.  It should compile with any
+standards compliant C++ compiler, however it depends on several libraries from
+the boost C++ libraries collection for various functionalities.  In particular,
+it must be linked against the boost thread library, which is used for platform-
+independent multi-threading of searches.
+
+
+For more information on PPRNG, visit:
+http://www.smogon.com/forums/showthread.php?t=102901
