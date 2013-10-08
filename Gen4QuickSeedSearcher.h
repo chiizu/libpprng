@@ -62,7 +62,7 @@ public:
   typedef boost::function<void (const ResultType&)>  ResultCallback;
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &statusHandler);
 };
 
 }

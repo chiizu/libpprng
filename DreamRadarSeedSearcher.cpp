@@ -137,6 +137,8 @@ struct FrameGeneratorFactory
 uint64_t DreamRadarSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  numFrames = frame.max - frame.min + 1;
   
@@ -150,12 +152,13 @@ uint64_t DreamRadarSeedSearcher::Criteria::ExpectedNumberOfResults() const
   numResults = IVs::AdjustExpectedResultsForHiddenPower
     (numResults, ivs.min, ivs.max, ivs.hiddenTypeMask, ivs.minHiddenPower);
   
-  return numResults;
+  return numResults + 1;
 }
 
 void DreamRadarSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &searchStatusHandler,
+   const std::vector<uint64_t> &startingSeeds)
 {
   IVPattern::Type  ivPattern = criteria.ivs.GetPattern();
   
@@ -172,16 +175,26 @@ void DreamRadarSeedSearcher::Search
   {
     SeedMapSearcher  seedSearcher(GetIVSeedMap(ivPattern), criteria);
     
-    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                            resultHandler, progressHandler);
+    if (startingSeeds.size() > 0)
+      searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                      resultHandler, searchStatusHandler,
+                                      startingSeeds);
+    else
+      searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                              resultHandler, searchStatusHandler);
   }
   else
   {
     SeedFrameSearcher<FrameGeneratorFactory> seedSearcher(frameGeneratorFactory,
                                                           criteria.frame);
     
-    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                            resultHandler, progressHandler);
+    if (startingSeeds.size() > 0)
+      searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                      resultHandler, searchStatusHandler,
+                                      startingSeeds);
+    else
+      searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                              resultHandler, searchStatusHandler);
   }
 }
 

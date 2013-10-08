@@ -81,15 +81,15 @@ uint64_t Gen4TIDSearcher::Criteria::ExpectedNumberOfResults() const
 
 void Gen4TIDSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   TimeSeedGenerator  seedGenerator(criteria.minDelay, criteria.maxDelay);
   SeedSearcher       seedSearcher;
   FrameChecker       frameChecker(criteria);
   SearchRunner       searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  resultHandler, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                  statusHandler);
 }
 
 }

@@ -72,6 +72,8 @@ static const uint32_t SlotPercent[] = { 1, 4, 15, 1, 4, 15, 25, 1, 4, 15, 25 };
 uint64_t HiddenHollowSpawnSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  numFrames = frame.max - frame.min + 1;
   
@@ -101,12 +103,12 @@ uint64_t HiddenHollowSpawnSeedSearcher::Criteria::ExpectedNumberOfResults() cons
     numSeeds * numFrames * 5 * slotPercent * genderNumerator /
     (100 * 4 * 100 * genderDenominator);
   
-  return numResults;
+  return numResults + 1;
 }
 
 void HiddenHollowSpawnSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   HashedSeedGenerator    seedGenerator(criteria.seedParameters);
   FrameGeneratorFactory  frameGeneratorFactory(criteria.memoryLinkUsed);
@@ -119,7 +121,7 @@ void HiddenHollowSpawnSeedSearcher::Search
   SearchRunner  searcher;
   
   searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                          resultHandler, progressHandler);
+                          resultHandler, statusHandler);
 }
 
 }

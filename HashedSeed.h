@@ -34,8 +34,9 @@ class HashedSeed
 public:
   struct Parameters
   {
-    Game::Version           version;
-    DS::Type                dsType;
+    Game::Color             gameColor;
+    Game::Language          gameLanguage;
+    Console::Type           consoleType;
     uint64_t                macAddress;
     uint32_t                timer0, vcount, vframe;
     boost::gregorian::date  date;
@@ -43,13 +44,15 @@ public:
     uint32_t                heldButtons;
     
     Parameters()
-      : version(Game::Version(0)), dsType(DS::Type(0)), macAddress(),
+      : gameColor(Game::Color(0)), gameLanguage(Game::Language(0)),
+        consoleType(Console::Type(0)), macAddress(),
         timer0(0), vcount(0), vframe(0), date(),
         hour(0), minute(0), second(0), heldButtons(0)
     {}
     
-    explicit Parameters(Game::Version version_)
-      : version(version_), dsType(DS::Type(0)), macAddress(),
+    Parameters(Game::Color color, Game::Language language)
+      : gameColor(color), gameLanguage(language),
+        consoleType(Console::Type(0)), macAddress(),
         timer0(0), vcount(0), vframe(0), date(),
         hour(0), minute(0), second(0), heldButtons(0)
     {}
@@ -66,8 +69,8 @@ public:
   {}
   
   // to be used when only raw seed is known / important
-  HashedSeed(Game::Version version, uint64_t rawSeed)
-    : parameters(version), rawSeed(rawSeed),
+  HashedSeed(Game::Color color, Game::Language language, uint64_t rawSeed)
+    : parameters(color, language), rawSeed(rawSeed),
       m_skippedPIDFramesCalculated(false),
       m_skippedPIDFramesMemoryLinkUsed(false), m_skippedPIDFrames(0),
       m_skippedPIDFramesSeed(0)
@@ -81,14 +84,16 @@ public:
       m_skippedPIDFramesSeed(0)
   {}
   
-  const Parameters  parameters;
+  Parameters  parameters;
   
   // calculated raw seed
-  const uint64_t    rawSeed;
+  uint64_t    rawSeed;
   
   uint32_t year() const { return parameters.date.year(); }
   uint32_t month() const { return parameters.date.month(); }
   uint32_t day() const { return parameters.date.day(); }
+  
+  Season::Type Season() const { return Season::ForMonth(month()); }
   
   uint32_t SeedAndSkipPIDFrames(LCRNG5 &rng, bool memoryLinkUsed) const;
   

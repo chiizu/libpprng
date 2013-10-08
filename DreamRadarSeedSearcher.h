@@ -57,7 +57,9 @@ public:
   DreamRadarSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &searchStatusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

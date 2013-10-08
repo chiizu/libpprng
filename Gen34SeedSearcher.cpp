@@ -111,7 +111,7 @@ uint64_t Gen34SeedSearcher::Criteria::ExpectedNumberOfResults()
 
 void Gen34SeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   TimeSeedGenerator         seedGenerator(criteria.minDelay, criteria.maxDelay);
   FrameGeneratorFactory     frameGeneratorFactory;
@@ -124,8 +124,8 @@ void Gen34SeedSearcher::Search
   
   SearchRunner              searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  resultHandler, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                  statusHandler);
 }
 
 }

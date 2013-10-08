@@ -203,7 +203,8 @@ struct Gen5PIDRNG
                               Gender::Type gender, Gender::Ratio ratio,
                               RNG &rng)
   {
-    if ((gender == Gender::GENDERLESS) || (gender == Gender::ANY))
+    if ((gender == Gender::GENDERLESS) || (gender == Gender::ANY) ||
+        (ratio == Gender::NO_RATIO))
       return pid;
     
     return (pid & 0xFFFFFF00) |

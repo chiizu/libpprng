@@ -164,6 +164,8 @@ struct SeedMapSearcher
 uint64_t HashedSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  numIVFrames = ivFrame.max - ivFrame.min + 1;
   
@@ -175,12 +177,13 @@ uint64_t HashedSeedSearcher::Criteria::ExpectedNumberOfResults() const
   numResults = IVs::AdjustExpectedResultsForHiddenPower
     (numResults, ivs.min, ivs.max, ivs.hiddenTypeMask, ivs.minHiddenPower);
   
-  return numResults;
+  return numResults + 1;
 }
 
 void HashedSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler,
+   const std::vector<uint64_t> &startingSeeds)
 {
   HashedSeedGenerator  seedGenerator(criteria.seedParameters);
   FrameChecker         frameChecker(criteria);
@@ -188,7 +191,7 @@ void HashedSeedSearcher::Search
   
   IVPattern::Type  ivPattern = criteria.ivs.GetPattern();
   bool             isBlack2White2 =
-    Game::IsBlack2White2(criteria.seedParameters.version);
+    Game::IsBlack2White2(criteria.seedParameters.gameColor);
   uint32_t         offset = isBlack2White2 ? 2 :0;
   
   if ((ivPattern == IVPattern::CUSTOM) ||
@@ -203,8 +206,13 @@ void HashedSeedSearcher::Search
     SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGenFactory,
                                                            criteria.ivFrame);
     
-    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                            resultHandler, progressHandler);
+    if (startingSeeds.size() > 0)
+      searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                      resultHandler, statusHandler,
+                                      startingSeeds);
+    else
+      searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                              resultHandler, statusHandler);
   }
   else if ((criteria.ivFrame.min > (IVSeedHashMaxFrame - offset)) ||
            (criteria.ivFrame.max > (IVSeedHashMaxFrame - offset)))
@@ -212,8 +220,14 @@ void HashedSeedSearcher::Search
     SeedMapSearcher  seedSearcher(GetIVSeedMap(ivPattern),
                                   criteria.ivFrame,
                                   isBlack2White2);
-    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                            resultHandler, progressHandler);
+    
+    if (startingSeeds.size() > 0)
+      searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                      resultHandler, statusHandler,
+                                      startingSeeds);
+    else
+      searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                              resultHandler, statusHandler);
   }
   else
   {
@@ -221,8 +235,14 @@ void HashedSeedSearcher::Search
                                                  criteria.ivs.isRoamer),
                                    criteria.ivFrame,
                                    isBlack2White2);
-    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
-                            resultHandler, progressHandler);
+    
+    if (startingSeeds.size() > 0)
+      searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                      resultHandler, statusHandler,
+                                      startingSeeds);
+    else
+      searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                              resultHandler, statusHandler);
   }
 }
 

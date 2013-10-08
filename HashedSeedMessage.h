@@ -33,7 +33,8 @@ namespace pprng
 class HashedSeedMessage
 {
 public:
-  HashedSeedMessage(const HashedSeed::Parameters &parameters);
+  HashedSeedMessage(const HashedSeed::Parameters &parameters,
+                    uint32_t excludedSeasonMask);
   
   HashedSeed AsHashedSeed() const;
   
@@ -75,6 +76,7 @@ private:
   HashedSeed::Parameters  m_parameters;
   uint32_t                m_message[16];
   uint32_t                m_monthDays;
+  uint32_t                m_excludedSeasonMask;
   
   // actual seed calculated lazily
   mutable bool      m_rawSeedCalculated;

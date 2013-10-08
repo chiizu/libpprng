@@ -320,210 +320,236 @@ enum Nazo
   KRWhite2Nazo2DSi = 0x027A57B0
 };
 
-static Nazo NazoForVersionAndDS(Game::Version version, DS::Type dsType)
+
+static Nazo NazoForParameters(const HashedSeed::Parameters &parameters)
 {
-  bool isPlainDS = (dsType == DS::DSPhat) || (dsType == DS::DSLite);
+  bool isPlainDS = (parameters.consoleType == Console::DS);
   
-  switch (version)
+  switch (parameters.gameColor)
   {
-    case Game::BlackJapanese:
-      return isPlainDS ? JPBlackNazo : JPBlackDSiNazo;
-      break;
-    
-    case Game::WhiteJapanese:
-      return isPlainDS ? JPWhiteNazo : JPWhiteDSiNazo;
-      break;
-    
-    case Game::BlackEnglish:
+  case Game::Black:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
       return isPlainDS ? ENBlackNazo : ENBlackDSiNazo;
-      break;
     
-    case Game::WhiteEnglish:
-      return isPlainDS ? ENWhiteNazo : ENWhiteDSiNazo;
-      break;
-    
-    case Game::BlackSpanish:
-      return isPlainDS ? SPBlackNazo : SPBlackDSiNazo;
-      break;
-    
-    case Game::WhiteSpanish:
-      return isPlainDS ? SPWhiteNazo : SPWhiteDSiNazo;
-      break;
-    
-    case Game::BlackFrench:
+    case Game::French:
       return isPlainDS ? FRBlackNazo : FRBlackDSiNazo;
-      break;
       
-    case Game::WhiteFrench:
-      return isPlainDS ? FRWhiteNazo : FRWhiteDSiNazo;
-      break;
-      
-    case Game::BlackItalian:
-      return isPlainDS ? ITBlackNazo : ITBlackDSiNazo;
-      break;
-      
-    case Game::WhiteItalian:
-      return isPlainDS ? ITWhiteNazo : ITWhiteDSiNazo;
-      break;
-      
-    case Game::BlackGerman:
+    case Game::German:
       return isPlainDS ? DEBlackNazo : DEBlackDSiNazo;
-      break;
       
-    case Game::WhiteGerman:
-      return isPlainDS ? DEWhiteNazo : DEWhiteDSiNazo;
-      break;
+    case Game::Italian:
+      return isPlainDS ? ITBlackNazo : ITBlackDSiNazo;
       
-    case Game::BlackKorean:
+    case Game::Korean:
       return isPlainDS ? KRBlackNazo : KRBlackDSiNazo;
-      break;
-      
-    case Game::WhiteKorean:
-      return isPlainDS ? KRWhiteNazo : KRWhiteDSiNazo;
-      break;
-      
-    case Game::Black2Japanese:
-      return isPlainDS ? JPBlack2Nazo2DS : JPBlack2Nazo2DSi;
-      break;
     
-    case Game::White2Japanese:
-      return isPlainDS ? JPWhite2Nazo2DS : JPWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2English:
-      return isPlainDS ? ENBlack2Nazo2DS : ENBlack2Nazo2DSi;
-      break;
+    case Game::Japanese:
+      return isPlainDS ? JPBlackNazo : JPBlackDSiNazo;
     
-    case Game::White2English:
-      return isPlainDS ? ENWhite2Nazo2DS : ENWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2French:
-      return isPlainDS ? FRBlack2Nazo2DS : FRBlack2Nazo2DSi;
-      break;
-    
-    case Game::White2French:
-      return isPlainDS ? FRWhite2Nazo2DS : FRWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2German:
-      return isPlainDS ? DEBlack2Nazo2DS : DEBlack2Nazo2DSi;
-      break;
-    
-    case Game::White2German:
-      return isPlainDS ? DEWhite2Nazo2DS : DEWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2Italian:
-      return isPlainDS ? ITBlack2Nazo2DS : ITBlack2Nazo2DSi;
-      break;
-    
-    case Game::White2Italian:
-      return isPlainDS ? ITWhite2Nazo2DS : ITWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2Spanish:
-      return isPlainDS ? SPBlack2Nazo2DS : SPBlack2Nazo2DSi;
-      break;
-    
-    case Game::White2Spanish:
-      return isPlainDS ? SPWhite2Nazo2DS : SPWhite2Nazo2DSi;
-      break;
-      
-    case Game::Black2Korean:
-      return isPlainDS ? KRBlack2Nazo2DS : KRBlack2Nazo2DSi;
-      break;
-      
-    case Game::White2Korean:
-      return isPlainDS ? KRWhite2Nazo2DS : KRWhite2Nazo2DSi;
-      break;
+    case Game::Spanish:
+      return isPlainDS ? SPBlackNazo : SPBlackDSiNazo;
       
     default:
-      return static_cast<Nazo>(0);
       break;
+    }
+    break;
+    
+  case Game::White:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
+      return isPlainDS ? ENWhiteNazo : ENWhiteDSiNazo;
+      
+    case Game::French:
+      return isPlainDS ? FRWhiteNazo : FRWhiteDSiNazo;
+      
+    case Game::German:
+      return isPlainDS ? DEWhiteNazo : DEWhiteDSiNazo;
+      
+    case Game::Italian:
+      return isPlainDS ? ITWhiteNazo : ITWhiteDSiNazo;
+      
+    case Game::Japanese:
+      return isPlainDS ? JPWhiteNazo : JPWhiteDSiNazo;
+    
+    case Game::Korean:
+      return isPlainDS ? KRWhiteNazo : KRWhiteDSiNazo;
+    
+    case Game::Spanish:
+      return isPlainDS ? SPWhiteNazo : SPWhiteDSiNazo;
+      
+    default:
+      break;
+    }
+    break;
+    
+  case Game::Black2:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
+      return isPlainDS ? ENBlack2Nazo2DS : ENBlack2Nazo2DSi;
+      
+    case Game::French:
+      return isPlainDS ? FRBlack2Nazo2DS : FRBlack2Nazo2DSi;
+      
+    case Game::German:
+      return isPlainDS ? DEBlack2Nazo2DS : DEBlack2Nazo2DSi;
+      
+    case Game::Italian:
+      return isPlainDS ? ITBlack2Nazo2DS : ITBlack2Nazo2DSi;
+    
+    case Game::Japanese:
+      return isPlainDS ? JPBlack2Nazo2DS : JPBlack2Nazo2DSi;
+      
+    case Game::Korean:
+      return isPlainDS ? KRBlack2Nazo2DS : KRBlack2Nazo2DSi;
+      
+    case Game::Spanish:
+      return isPlainDS ? SPBlack2Nazo2DS : SPBlack2Nazo2DSi;
+      
+    default:
+      break;
+    }
+    break;
+    
+  case Game::White2:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
+      return isPlainDS ? ENWhite2Nazo2DS : ENWhite2Nazo2DSi;
+    
+    case Game::French:
+      return isPlainDS ? FRWhite2Nazo2DS : FRWhite2Nazo2DSi;
+    
+    case Game::German:
+      return isPlainDS ? DEWhite2Nazo2DS : DEWhite2Nazo2DSi;
+    
+    case Game::Italian:
+      return isPlainDS ? ITWhite2Nazo2DS : ITWhite2Nazo2DSi;
+      
+    case Game::Japanese:
+      return isPlainDS ? JPWhite2Nazo2DS : JPWhite2Nazo2DSi;
+    
+    case Game::Korean:
+      return isPlainDS ? KRWhite2Nazo2DS : KRWhite2Nazo2DSi;
+    
+    case Game::Spanish:
+      return isPlainDS ? SPWhite2Nazo2DS : SPWhite2Nazo2DSi;
+      
+    default:
+      break;
+    }
+    break;
+    
+  default:
+    break;
   }
+  
+  return static_cast<Nazo>(0);
 }
 
-static void SetBlack2White2FirstNazos(uint32_t message[], Game::Version version)
+
+static void SetBlack2White2FirstNazos(uint32_t message[],
+                                      const HashedSeed::Parameters &parameters)
 {
-  switch (version)
+  switch (parameters.gameColor)
   {
-    case Game::Black2Japanese:
-      message[0] = SwapEndianess(JPBlack2Nazo0);
-      message[1] = SwapEndianess(JPBlack2Nazo1);
-      break;
-    
-    case Game::White2Japanese:
-      message[0] = SwapEndianess(JPWhite2Nazo0);
-      message[1] = SwapEndianess(JPWhite2Nazo1);
-      break;
-      
-    case Game::Black2English:
+  case Game::Black2:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
       message[0] = SwapEndianess(ENBlack2Nazo0);
       message[1] = SwapEndianess(ENBlack2Nazo1);
-      break;
-    
-    case Game::White2English:
-      message[0] = SwapEndianess(ENWhite2Nazo0);
-      message[1] = SwapEndianess(ENWhite2Nazo1);
-      break;
+      return;
       
-    case Game::Black2French:
+    case Game::French:
       message[0] = SwapEndianess(FRBlack2Nazo0);
       message[1] = SwapEndianess(FRBlack2Nazo1);
-      break;
-    
-    case Game::White2French:
-      message[0] = SwapEndianess(FRWhite2Nazo0);
-      message[1] = SwapEndianess(FRWhite2Nazo1);
-      break;
+      return;
       
-    case Game::Black2German:
+    case Game::German:
       message[0] = SwapEndianess(DEBlack2Nazo0);
       message[1] = SwapEndianess(DEBlack2Nazo1);
-      break;
-    
-    case Game::White2German:
-      message[0] = SwapEndianess(DEWhite2Nazo0);
-      message[1] = SwapEndianess(DEWhite2Nazo1);
-      break;
+      return;
       
-    case Game::Black2Italian:
+    case Game::Italian:
       message[0] = SwapEndianess(ITBlack2Nazo0);
       message[1] = SwapEndianess(ITBlack2Nazo1);
-      break;
-    
-    case Game::White2Italian:
-      message[0] = SwapEndianess(ITWhite2Nazo0);
-      message[1] = SwapEndianess(ITWhite2Nazo1);
-      break;
+      return;
       
-    case Game::Black2Spanish:
-      message[0] = SwapEndianess(SPBlack2Nazo0);
-      message[1] = SwapEndianess(SPBlack2Nazo1);
-      break;
-    
-    case Game::White2Spanish:
-      message[0] = SwapEndianess(SPWhite2Nazo0);
-      message[1] = SwapEndianess(SPWhite2Nazo1);
-      break;
+    case Game::Japanese:
+      message[0] = SwapEndianess(JPBlack2Nazo0);
+      message[1] = SwapEndianess(JPBlack2Nazo1);
+      return;
       
-    case Game::Black2Korean:
+    case Game::Korean:
       message[0] = SwapEndianess(KRBlack2Nazo0);
       message[1] = SwapEndianess(KRBlack2Nazo1);
-      break;
-    
-    case Game::White2Korean:
-      message[0] = SwapEndianess(KRWhite2Nazo0);
-      message[1] = SwapEndianess(KRWhite2Nazo1);
-      break;
+      return;
+      
+    case Game::Spanish:
+      message[0] = SwapEndianess(SPBlack2Nazo0);
+      message[1] = SwapEndianess(SPBlack2Nazo1);
+      return;
       
     default:
-      message[0] = 0;
-      message[1] = 0;
       break;
+    }
+    break;
+  
+  case Game::White2:
+    switch (parameters.gameLanguage)
+    {
+    case Game::English:
+      message[0] = SwapEndianess(ENWhite2Nazo0);
+      message[1] = SwapEndianess(ENWhite2Nazo1);
+      return;
+    
+    case Game::French:
+      message[0] = SwapEndianess(FRWhite2Nazo0);
+      message[1] = SwapEndianess(FRWhite2Nazo1);
+      return;
+    
+    case Game::German:
+      message[0] = SwapEndianess(DEWhite2Nazo0);
+      message[1] = SwapEndianess(DEWhite2Nazo1);
+      return;
+    
+    case Game::Italian:
+      message[0] = SwapEndianess(ITWhite2Nazo0);
+      message[1] = SwapEndianess(ITWhite2Nazo1);
+      return;
+    
+    case Game::Japanese:
+      message[0] = SwapEndianess(JPWhite2Nazo0);
+      message[1] = SwapEndianess(JPWhite2Nazo1);
+      return;
+    
+    case Game::Korean:
+      message[0] = SwapEndianess(KRWhite2Nazo0);
+      message[1] = SwapEndianess(KRWhite2Nazo1);
+      return;
+    
+    case Game::Spanish:
+      message[0] = SwapEndianess(SPWhite2Nazo0);
+      message[1] = SwapEndianess(SPWhite2Nazo1);
+      return;
+      
+    default:
+      break;
+    }
+    break;
+    
+  default:
+    break;
   }
+  
+  message[0] = 0;
+  message[1] = 0;
 }
+
 
 enum
 {
@@ -535,13 +561,14 @@ enum
   ButtonMask = 0x2FFF
 };
 
-static void SetNazos(uint32_t message[], Game::Version version, DS::Type dsType)
+static void SetNazos(uint32_t message[],
+                     const HashedSeed::Parameters &parameters)
 {
-  Nazo  nazo = NazoForVersionAndDS(version, dsType);
+  Nazo  nazo = NazoForParameters(parameters);
   
-  if (Game::IsBlack2White2(version))
+  if (Game::IsBlack2White2(parameters.gameColor))
   {
-    SetBlack2White2FirstNazos(message, version);
+    SetBlack2White2FirstNazos(message, parameters);
     message[2] = SwapEndianess(nazo);
     message[3] = message[4] = SwapEndianess(nazo + BW2NazoOffset);
   }
@@ -555,7 +582,7 @@ static void SetNazos(uint32_t message[], Game::Version version, DS::Type dsType)
 
 void MakeMessage(uint32_t message[], const HashedSeed::Parameters &parameters)
 {
-  SetNazos(message, parameters.version, parameters.dsType);
+  SetNazos(message, parameters);
   
   message[5] = SwapEndianess((parameters.vcount << 16) | parameters.timer0);
   
@@ -570,7 +597,8 @@ void MakeMessage(uint32_t message[], const HashedSeed::Parameters &parameters)
                (parameters.date.day_of_week() & 0xff);
   
   message[9] = (((ToBCD(parameters.hour) +
-                (((parameters.hour >= 12) && (parameters.dsType != DS::_3DS)) ?
+                (((parameters.hour >= 12) &&
+                  (parameters.consoleType != Console::_3DS)) ?
                  0x40 : 0)) & 0xff) << 24) |
                ((ToBCD(parameters.minute) & 0xff) << 16) |
                ((ToBCD(parameters.second) & 0xff) << 8);
@@ -598,9 +626,11 @@ uint64_t CalcRawSeed(const uint32_t *message)
 }
 
 
-HashedSeedMessage::HashedSeedMessage(const HashedSeed::Parameters &parameters)
+HashedSeedMessage::HashedSeedMessage(const HashedSeed::Parameters &parameters,
+                                     uint32_t excludedSeasonMask)
   : m_parameters(parameters), m_message(),
     m_monthDays(parameters.date.end_of_month().day()),
+    m_excludedSeasonMask(excludedSeasonMask),
     m_rawSeedCalculated(false)
 {
   MakeMessage(m_message, parameters);
@@ -672,7 +702,7 @@ void HashedSeedMessage::SetDate(boost::gregorian::date d)
 
 void HashedSeedMessage::NextDay()
 {
-  m_parameters.date = m_parameters.date + date_duration(1);
+  m_parameters.date = m_parameters.date + days(1);
   
   uint32_t  dayInfo = m_message[8] & 0xffff;
   uint32_t  dayOnesDigit = (dayInfo >> 8) & 0xf;
@@ -685,34 +715,49 @@ void HashedSeedMessage::NextDay()
   
   if (dayInt == m_monthDays)
   {
-    dayInfo = 0x0100 | dow;
-    m_monthDays = m_parameters.date.end_of_month().day();
-    
-    uint32_t  monthInfo = (m_message[8] >> 16) & 0xff;
-    
-    if (monthInfo == 0x12)
+    if ((m_excludedSeasonMask != 0) &&
+        (Season::MaskForMonth(m_parameters.date.month()) &
+         m_excludedSeasonMask) != 0)
     {
-      monthInfo = 0x01;
-      
-      uint32_t  yearInfo = (m_message[8] >> 24) & 0xff;
-      
-      if ((++yearInfo & 0xf) > 9)
+      do
       {
-        yearInfo = (yearInfo & 0xf0) + 0x10;
-        if (yearInfo >= 0xa0)
-          yearInfo = 0x00;
+        SetDate(m_parameters.date + months(1));
       }
-      
-      m_message[8] = (yearInfo << 24) | (monthInfo << 16) | dayInfo;
+      while ((Season::MaskForMonth(m_parameters.date.month()) &
+              m_excludedSeasonMask) != 0);
     }
     else
     {
-      if (++monthInfo == 0xA)
-      {
-        monthInfo = 0x10;
-      }
+      dayInfo = 0x0100 | dow;
+      m_monthDays = m_parameters.date.end_of_month().day();
       
-      m_message[8] = (m_message[8] & 0xff000000) | (monthInfo << 16) | dayInfo;
+      uint32_t  monthInfo = (m_message[8] >> 16) & 0xff;
+      
+      if (monthInfo == 0x12)
+      {
+        monthInfo = 0x01;
+        
+        uint32_t  yearInfo = (m_message[8] >> 24) & 0xff;
+        
+        if ((++yearInfo & 0xf) > 9)
+        {
+          yearInfo = (yearInfo & 0xf0) + 0x10;
+          if (yearInfo >= 0xa0)
+            yearInfo = 0x00;
+        }
+        
+        m_message[8] = (yearInfo << 24) | (monthInfo << 16) | dayInfo;
+      }
+      else
+      {
+        if (++monthInfo == 0xA)
+        {
+          monthInfo = 0x10;
+        }
+        
+        m_message[8] = (m_message[8] & 0xff000000) | (monthInfo << 16) |
+                       dayInfo;
+      }
     }
   }
   else if (++dayOnesDigit > 9)
@@ -734,7 +779,8 @@ void HashedSeedMessage::SetHour(uint32_t hour)
 {
   m_message[9] = (m_message[9] & 0x00ffffff) |
     ((ToBCD(hour) +
-      (((hour >= 12) && (m_parameters.dsType != DS::_3DS)) ? 0x40 : 0)) << 24);
+      (((hour >= 12) && (m_parameters.consoleType != Console::_3DS)) ?
+         0x40 : 0)) << 24);
   
   m_parameters.hour = hour;
   m_rawSeedCalculated = false;
@@ -751,7 +797,7 @@ void HashedSeedMessage::NextHour()
   else if (++m_parameters.hour == 12)
   {
     m_message[9] = (m_message[9] & 0x00ffffff) | 0x12000000 |
-      ((m_parameters.dsType != DS::_3DS) ? 0x40000000 : 0);
+      ((m_parameters.consoleType != Console::_3DS) ? 0x40000000 : 0);
   }
   else
   {

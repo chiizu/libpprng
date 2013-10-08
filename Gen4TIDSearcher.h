@@ -54,7 +54,7 @@ public:
   Gen4TIDSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &statusHandler);
 };
 
 }

@@ -63,12 +63,12 @@ static uint32_t ProbabilityTableLoop(LCRNG5 &rng)
   return count;
 }
 
-static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Version version,
+static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Color color,
                                  bool memoryLinkUsed)
 {
   uint32_t  count = 0;
   
-  if (Game::IsBlack2White2(version))
+  if (Game::IsBlack2White2(color))
   {
     count += ProbabilityTableLoop(rng);
     
@@ -121,12 +121,11 @@ static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Version version,
 }
 
 HashedSeed::HashedSeed(const HashedSeed::Parameters &p)
-  : parameters(p), rawSeed(HashedSeedMessage(parameters).GetRawSeed()),
+  : parameters(p), rawSeed(HashedSeedMessage(parameters, 0).GetRawSeed()),
     m_skippedPIDFramesCalculated(false),
     m_skippedPIDFramesMemoryLinkUsed(false),
     m_skippedPIDFrames(0), m_skippedPIDFramesSeed(0)
 {}
-
 
 uint32_t HashedSeed::SeedAndSkipPIDFrames(LCRNG5 &rng, bool memLinkUsed) const
 {
@@ -135,7 +134,8 @@ uint32_t HashedSeed::SeedAndSkipPIDFrames(LCRNG5 &rng, bool memLinkUsed) const
   {
     rng.Seed(rawSeed);
     
-    m_skippedPIDFrames = SkipPIDRNGFrames(rng, parameters.version, memLinkUsed);
+    m_skippedPIDFrames = SkipPIDRNGFrames(rng, parameters.gameColor,
+                                          memLinkUsed);
     m_skippedPIDFramesSeed = rng.Seed();
     
     m_skippedPIDFramesCalculated = true;

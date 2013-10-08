@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012 chiizu
+  Copyright (C) 2013 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -18,42 +18,49 @@
   along with libpprng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GEN4_EGG_IV_SEED_SEARCHER_H
-#define GEN4_EGG_IV_SEED_SEARCHER_H
+#ifndef ENCOUNTER_SEED_SEARCHER_H
+#define ENCOUNTER_SEED_SEARCHER_H
 
 
-#include "PPRNGTypes.h"
-#include "SearchCriteria.h"
-#include "SearchRunner.h"
-#include "SeedGenerator.h"
-#include "FrameGenerator.h"
-
-#include <boost/function.hpp>
+#include "HashedSeedSearcher.h"
 
 namespace pprng
 {
 
-class Gen4EggIVSeedSearcher
+class EncounterSeedSearcher
 {
 public:
-  struct Criteria : public SearchCriteria
+  struct Criteria : public HashedSeedSearcher::Criteria
   {
-    Game::Version                version;
-    SearchCriteria::DelayRange   delay;
-    SearchCriteria::FrameRange   frame;
-    OptionalIVs                  aIVs, bIVs;
-    SearchCriteria::IVCriteria   ivs;
+    Gen5PIDFrameGenerator::Parameters  frameParameters;
+    
+    SearchCriteria::PIDCriteria  pid;
+    SearchCriteria::FrameRange   pidFrame;
+    bool                         shinyOnly;
+    
+    uint32_t  leadAbilityMask;
+    uint32_t  esvMask[4];
+    
+    Criteria()
+      : HashedSeedSearcher::Criteria(),
+        frameParameters(), pid(), pidFrame(),
+        shinyOnly(false), leadAbilityMask(0)
+    {
+      esvMask[0] = esvMask[1] = esvMask[2] = esvMask[3] = 0;
+    }
     
     uint64_t ExpectedNumberOfResults() const;
   };
   
-  typedef Gen4EggIVFrame                             ResultType;
+  typedef Gen5EncounterFrame                         ResultType;
   typedef boost::function<void (const ResultType&)>  ResultCallback;
   
-  Gen4EggIVSeedSearcher() {}
+  EncounterSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              SearchRunner::StatusHandler &statusHandler);
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

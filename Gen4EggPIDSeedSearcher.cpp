@@ -118,7 +118,7 @@ uint64_t Gen4EggPIDSeedSearcher::Criteria::ExpectedNumberOfResults()
 
 void Gen4EggPIDSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   TimeSeedGenerator      seedGenerator(criteria.delay.min, criteria.delay.max);
   FrameGeneratorFactory  frameGeneratorFactory(criteria.frameParameters);
@@ -130,8 +130,8 @@ void Gen4EggPIDSeedSearcher::Search
   
   SearchRunner           searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  resultHandler, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                  statusHandler);
 }
 
 }

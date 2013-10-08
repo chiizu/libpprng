@@ -380,8 +380,8 @@ private:
     {
       m_frame.inheritance[inheritedIV[i]] =
         (((m_RNG.Next() >> 16) & 1) == 0) ?
-          Gen4BreedingFrame::ParentA :
-          Gen4BreedingFrame::ParentB;
+          Gen4BreedingFrame::Inheritance::ParentA :
+          Gen4BreedingFrame::Inheritance::ParentB;
     }
   }
   
@@ -557,47 +557,29 @@ public:
   typedef Gen5PIDFrame            Frame;
   typedef BufferedRNG<LCRNG5, 8>  RNG;
   
-  enum FrameType
-  {
-    GrassCaveFrame = 0,
-    SurfingFrame,
-    FishingFrame,
-    SwarmFrame,
-    ShakingGrassFrame,
-    SwirlingDustFrame,
-    BridgeShadowFrame,
-    WaterSpotSurfingFrame,
-    WaterSpotFishingFrame,
-    EntraLinkFrame,
-    StationaryFrame,
-    NonShinyStationaryFrame,
-    StarterFossilGiftFrame,
-    RoamerFrame,
-    DoublesFrame,
-    HiddenHollowFrame,
-    LarvestaEggFrame,
-    
-    NumFrameTypes
-  };
-  
   struct Parameters
   {
-    FrameType               frameType;
-    EncounterLead::Ability  leadAbility;
-    Gender::Type            targetGender;
-    Gender::Ratio           targetRatio;
-    uint32_t                tid, sid;
-    bool                    isBlack2White2;
-    bool                    hasShinyCharm;
-    bool                    memoryLinkUsed;
-    bool                    startFromLowestFrame;
+    Encounter::Type    encounterType;
+    LeadAbility::Type  leadAbility;
+    Gender::Type       setGender;
+    Gender::Ratio      setRatio[13];  // ratio for each esv (13th is swarm)
+    Ability::Type      setAbility;
+    Shininess::Type    setShininess;
+    uint32_t           tid, sid;
+    bool               hasShinyCharm;
+    bool               memoryLinkUsed;
     
     Parameters()
-      : frameType(GrassCaveFrame), leadAbility(EncounterLead::SYNCHRONIZE),
-        targetGender(Gender::ANY), targetRatio(Gender::ANY_RATIO),
+      : encounterType(Encounter::GRASS_CAVE),
+        leadAbility(LeadAbility::SYNCHRONIZE),
+        setGender(Gender::ANY), setAbility(Ability::ANY),
+        setShininess(Shininess::MAY_BE_SHINY),
         tid(0), sid(0), hasShinyCharm(false),
-        memoryLinkUsed(false), startFromLowestFrame(false)
-    {}
+        memoryLinkUsed(false)
+    {
+      for (int i = 0; i < 13; ++i)
+        setRatio[i] = Gender::ANY_RATIO;
+    }
   };
   
   Gen5PIDFrameGenerator(const HashedSeed &seed, const Parameters &parameters);
@@ -608,7 +590,8 @@ public:
   
   const Frame& CurrentFrame() const { return m_frame; }
   
-  FrameType GetFrameType() const { return m_parameters.frameType; }
+  Encounter::Type GetEncounterType() const
+  { return m_parameters.encounterType; }
   
 private:
   typedef void (Gen5PIDFrameGenerator::*PIDGenerator)();
@@ -633,7 +616,7 @@ private:
     ESVGenerator       b2w2EsvGenerator;
   };
   
-  static const FrameGeneratorInfo  s_FrameGeneratorInfo[NumFrameTypes];
+  static const FrameGeneratorInfo  s_FrameGeneratorInfo[];
   
   void NextWildPID();
   void NextEntraLinkPID();
@@ -653,6 +636,10 @@ private:
   void NextLarvestaEggFrame();
   void NextEntraLinkFrame();
   void NextSimpleFrame();
+  
+  void ApplyAbility();
+  
+  void NextNature();
   
   void CheckLeadAbility();
   void ApplySync();
@@ -679,27 +666,29 @@ class WonderCardFrameGenerator
 public:
   typedef HashedSeed               Seed;
   typedef WonderCardFrame          Frame;
+  
+  // only 7 because the IV calls are seperately buffered in the IVRNG
   typedef BufferedRNG<LCRNG5, 7>   RNG;
   typedef Gen5BufferingIVRNG<RNG>  IVRNG;
   
   struct Parameters
   {
-    Nature::Type               cardNature;
-    Ability::Type              cardAbility;
-    Gender::Type               cardGender;
-    Gender::Ratio              cardGenderRatio;
-    WonderCardShininess::Type  cardShininess;
-    uint32_t                   cardTID, cardSID;
+    Nature::Type     cardNature;
+    Ability::Type    cardAbility;
+    Gender::Type     cardGender;
+    Gender::Ratio    cardGenderRatio;
+    Shininess::Type  cardShininess;
+    uint32_t         cardTID, cardSID;
+    OptionalIVs      cardIVs;
     
-    bool           memoryLinkUsed;
-    bool           startFromLowestFrame;
+    bool             memoryLinkUsed;
     
     Parameters()
       : cardNature(Nature::ANY), cardAbility(Ability::ANY),
         cardGender(Gender::ANY), cardGenderRatio(Gender::ANY_RATIO),
-        cardShininess(WonderCardShininess::NEVER_SHINY),
+        cardShininess(Shininess::NEVER_SHINY),
         cardTID(0), cardSID(0),
-        memoryLinkUsed(false), startFromLowestFrame(false)
+        memoryLinkUsed(false)
     {}
   };
   
@@ -718,7 +707,6 @@ private:
   IVRNG             m_IVRNG;
   Frame             m_frame;
   const Parameters  m_parameters;
-  const bool        m_isGLAN;
 };
 
 
@@ -778,15 +766,25 @@ public:
   
   struct Parameters
   {
-    FemaleParent::Type  femaleSpecies;
-    bool                usingEverstone;
-    bool                usingDitto;
-    bool                internationalParents;
-    uint32_t            tid, sid;
+    SpeciesParent::Type  speciesParentType;
+    bool                 usingDitto;
+    bool                 hasHiddenAbility;
+    bool                 usingEverstone;
+    bool                 internationalParents;
+    uint32_t             tid, sid;
+    
+    Parameters()
+      : speciesParentType(SpeciesParent::OTHER),
+        usingDitto(false), hasHiddenAbility(false),
+        usingEverstone(false), internationalParents(false),
+        tid(0), sid(0)
+    {}
   };
   
   Gen5BreedingFrameGenerator(const HashedSeed &seed,
                              const Parameters &parameters);
+  
+  void SkipFrames(uint32_t numFrames);
   
   void AdvanceFrame();
   
@@ -798,6 +796,44 @@ private:
   RNG::SeedType  m_NextSeed;
   RNG            m_RNG;
   Frame          m_frame;
+};
+
+
+class Gen5EggFrameGenerator
+{
+public:
+  typedef HashedSeed    Seed;
+  typedef Gen5EggFrame  Frame;
+  
+  struct Parameters : public Gen5BreedingFrameGenerator::Parameters
+  {
+    uint32_t     ivFrame;
+    IVs          baseIVs;
+    OptionalIVs  xParentIVs, yParentIVs;
+    
+    Parameters()
+      : Gen5BreedingFrameGenerator::Parameters(),
+        ivFrame(8), baseIVs(), xParentIVs(), yParentIVs()
+    {}
+    
+    explicit Parameters(const Gen5BreedingFrameGenerator::Parameters &p)
+      : Gen5BreedingFrameGenerator::Parameters(p),
+        ivFrame(8), baseIVs(), xParentIVs(), yParentIVs()
+    {}
+  };
+  
+  Gen5EggFrameGenerator(const HashedSeed &seed, const Parameters &parameters);
+  
+  void SkipFrames(uint32_t numFrames);
+  
+  void AdvanceFrame();
+  
+  const Frame& CurrentFrame() { return m_frame; }
+  
+private:
+  const Parameters            m_parameters;
+  Gen5BreedingFrameGenerator  m_breedingFrameGenerator;
+  Frame                       m_frame;
 };
 
 

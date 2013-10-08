@@ -99,14 +99,14 @@ static const uint32_t  SingleButtons[] =
   Button::START_BUTTON, Button::R_BUTTON, Button::L_BUTTON,
   Button::X_BUTTON, Button::Y_BUTTON };
 
-static const char *DPadDirectionNameeArray[] =
+static const char *DPadDirectionNameArray[] =
 { "", "Right", "Left", "Right-Left", "Up", "Up-Rt", "Up-Lf",
   "Right-Left-Up", "Down", "Dn-Rt", "Dn-Lf"  };
 
 static const std::vector<std::string>  DPadDirectionName
-  (DPadDirectionNameeArray,
-   DPadDirectionNameeArray +
-     (sizeof(DPadDirectionNameeArray) / sizeof(const char *)));
+  (DPadDirectionNameArray,
+   DPadDirectionNameArray +
+     (sizeof(DPadDirectionNameArray) / sizeof(const char *)));
 
 static const uint32_t  DPadDirections[] =
 { Button::RIGHT_BUTTON, Button::LEFT_BUTTON, Button::UP_BUTTON,
@@ -361,6 +361,115 @@ Game::Version Game::VersionForColorAndLanguage(Game::Color c, Game::Language l)
   }
 }
 
+Game::Color Game::ColorForVersion(Game::Version v)
+{
+  switch (v)
+  {
+  case EmeraldVersion: return Emerald;
+  case DiamondVersion: return Diamond;
+  case PearlVersion: return Pearl;
+  case PlatinumVersion: return Platinum;
+  case HeartGoldVersion: return HeartGold;
+  case SoulSilverVersion: return SoulSilver;
+  
+  case BlackEnglish:
+  case BlackFrench:
+  case BlackGerman:
+  case BlackItalian:
+  case BlackJapanese:
+  case BlackKorean:
+  case BlackSpanish:
+    return Black;
+    
+  case WhiteEnglish:
+  case WhiteFrench:
+  case WhiteGerman:
+  case WhiteItalian:
+  case WhiteJapanese:
+  case WhiteSpanish:
+  case WhiteKorean:
+    return White;
+    
+  case Black2English:
+  case Black2French:
+  case Black2German:
+  case Black2Italian:
+  case Black2Japanese:
+  case Black2Korean:
+  case Black2Spanish:
+    return Black2;
+    
+  case White2Japanese:
+  case White2English:
+  case White2French:
+  case White2German:
+  case White2Italian:
+  case White2Korean:
+  case White2Spanish:
+    return White2;
+    
+  default:
+    return UnknownColor;
+  }
+}
+
+Game::Language Game::LanguageForVersion(Game::Version v)
+{
+  switch (v)
+  {
+  case EmeraldVersion:
+  case DiamondVersion:
+  case PearlVersion:
+  case PlatinumVersion:
+  case HeartGoldVersion:
+  case SoulSilverVersion:
+  default:
+    return UnknownLanguage;
+  
+  case BlackEnglish:
+  case WhiteEnglish:
+  case Black2English:
+  case White2English:
+    return English;
+    
+  case BlackFrench:
+  case WhiteFrench:
+  case Black2French:
+  case White2French:
+    return French;
+    
+  case BlackGerman:
+  case WhiteGerman:
+  case Black2German:
+  case White2German:
+    return German;
+    
+  case BlackItalian:
+  case WhiteItalian:
+  case Black2Italian:
+  case White2Italian:
+    return Italian;
+    
+  case BlackJapanese:
+  case WhiteJapanese:
+  case Black2Japanese:
+  case White2Japanese:
+    return Japanese;
+    
+  case BlackKorean:
+  case WhiteKorean:
+  case Black2Korean:
+  case White2Korean:
+    return Korean;
+    
+  case BlackSpanish:
+  case WhiteSpanish:
+  case Black2Spanish:
+  case White2Spanish:
+    return Spanish;
+  }
+}
+
 const std::string& Nature::ToString(Nature::Type t)
 {
   if ((t >= HARDY) && (t <= MIXED))
@@ -602,14 +711,14 @@ IVs::ImpossibleMinHiddenPowerException::ImpossibleMinHiddenPowerException
 // properly adjust the number of expected results that will be returned based
 // on the desired hidden power and types.
 uint64_t IVs::AdjustExpectedResultsForHiddenPower
-  (uint64_t numResults, IndividualValues minIVs, IndividualValues maxIVs,
-   uint32_t typeMask, uint32_t minPower)
+  (uint64_t numResults, const IndividualValues &minIVs,
+   const IndividualValues &maxIVs, uint32_t typeMask, uint32_t minPower)
       throw (ImpossibleHiddenTypeException, ImpossibleMinHiddenPowerException)
 {
   static const Type  IVOrdering[] = { HP, AT, DF, SP, SA, SD };
   static const uint32_t  AllHiddenTypes = (0x1 << 16) - 1;
   
-  if ((typeMask == AllHiddenTypes) || (typeMask == 0))
+  if (typeMask == 0)
     return numResults;
   
   uint32_t  addend = 0x1;
@@ -774,6 +883,14 @@ IVPattern::Type IVPattern::Get(const IVs &min, const IVs &max,
   return IVPattern::CUSTOM;
 }
 
+static const IVs::Type  CharacteristicIVOrder[6] =
+  { IVs::HP, IVs::AT, IVs::DF, IVs::SP, IVs::SA, IVs::SD };
+
+static const Characteristic::Type  CharacteristicStartByIV[6] =
+  { Characteristic::LOVES_TO_EAT, Characteristic::PROUD_OF_ITS_POWER,
+    Characteristic::STURDY_BODY, Characteristic::LIKES_TO_RUN,
+    Characteristic::HIGHLY_CURIOUS, Characteristic::STRONG_WILLED };
+
 Characteristic::Type Characteristic::Get(PID pid, IVs ivs)
 {
   uint32_t      maxIVValue = 0;
@@ -835,25 +952,16 @@ Characteristic::Type Characteristic::Get(PID pid, IVs ivs)
     maxes |= 0x1 << IVs::SP;
   }
   
-  uint32_t  offset = maxIVValue % 10;
-  if (offset > 4)
-    offset -= 5;
-  
-  const IVs::Type  ivOrder[6] =
-    { IVs::HP, IVs::AT, IVs::DF, IVs::SP, IVs::SA, IVs::SD };
-  
-  const Type  start[6] =
-    { LOVES_TO_EAT, PROUD_OF_ITS_POWER, STURDY_BODY,
-      LIKES_TO_RUN, HIGHLY_CURIOUS, STRONG_WILLED };
+  uint32_t  offset = maxIVValue % 5;
   
   uint32_t   index = pid.word % 6;
   uint32_t   count = 0;
   
   while (count < 6)
   {
-    if (maxes & (0x1 << ivOrder[index]))
+    if (maxes & (0x1 << CharacteristicIVOrder[index]))
     {
-      return Type(start[index] + offset);
+      return Type(CharacteristicStartByIV[index] + offset);
     }
     
     if (++index > 5) index = 0;
@@ -861,6 +969,16 @@ Characteristic::Type Characteristic::Get(PID pid, IVs ivs)
   }
   
   return NONE;
+}
+
+IVs::Type Characteristic::DecidingIVType(Type c)
+{
+  return IVs::Type(c / 5);
+}
+
+uint32_t Characteristic::IVMod5Value(Type c)
+{
+  return c % 5;
 }
 
 const std::string& Characteristic::ToString(Characteristic::Type c)

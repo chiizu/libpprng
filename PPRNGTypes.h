@@ -55,6 +55,19 @@ struct DS
   static std::string ToString(Type v);
 };
 
+struct Console
+{
+  enum Type
+  {
+    NONE = -1,
+    DS = 0,
+    DSI,
+    _3DS,
+    
+    UNKNOWN_CONSOLE
+  };
+};
+
 
 struct Button
 {
@@ -240,6 +253,30 @@ struct Game
   static std::string ToString(Version v);
   
   static Version VersionForColorAndLanguage(Color c, Language l);
+  static Color ColorForVersion(Version v);
+  static Language LanguageForVersion(Version v);
+};
+
+
+struct Season
+{
+  enum Type
+  {
+    NO_SEASON = 0,
+    SPRING,
+    SUMMER,
+    AUTUMN,
+    WINTER
+  };
+  
+  static uint32_t Mask(Type t)
+  { return (t == NO_SEASON) ? 0 : (0x1 << (t - 1)); }
+  
+  static uint32_t MaskForMonth(uint32_t m)
+  { return ((m > 0) && (m <= 12)) ? (0x1 << ((m - 1) % 4)) : 0; }
+  
+  static Type ForMonth(uint32_t m)
+  { return ((m > 0) && (m <= 12)) ? Type(((m - 1) % 4) + 1) : NO_SEASON; }
 };
 
 
@@ -309,23 +346,32 @@ struct Gender
 {
   enum Type
   {
-    NONE = -1,
+    GENDERLESS = -1,
     FEMALE = 0,
     MALE,
-    GENDERLESS,
     
     ANY
   };
   
+  static Type OppositeGender(Type t)
+  {
+    if (t == FEMALE)
+      return MALE;
+    else if (t == MALE)
+      return FEMALE;
+    else
+      return GENDERLESS;
+  }
+  
   enum Ratio
   {
     NO_RATIO = -1,
-    ONE_EIGHTH_FEMALE = 0,
-    ONE_FOURTH_FEMALE,
-    ONE_HALF_FEMALE,
-    THREE_FOURTHS_FEMALE,
-    FEMALE_ONLY,
-    MALE_ONLY,
+    MALE_ONLY = 0,
+    ONE_EIGHTH_FEMALE = 1,
+    ONE_FOURTH_FEMALE = 2,
+    ONE_HALF_FEMALE = 4,
+    THREE_FOURTHS_FEMALE =6,
+    FEMALE_ONLY = 8,
     
     ANY_RATIO
   };
@@ -366,7 +412,7 @@ struct Gender
   
   static bool GenderValueMatches(uint32_t value, Type t, Ratio r)
   {
-    if ((t == ANY) || (r == ANY_RATIO))
+    if ((t == ANY) || (r == NO_RATIO))
       return true;
     
     uint32_t  threshold = GetThreshold(r);
@@ -427,9 +473,16 @@ struct PersonalityValue
   
   Gender::Type GenderForRatio(Gender::Ratio ratio) const
   {
-    Gender::Threshold  threshold = Gender::GetThreshold(ratio);
-    
-    return (GenderValue() < threshold) ? Gender::FEMALE : Gender::MALE;
+    if (ratio == Gender::NO_RATIO)
+    {
+      return Gender::GENDERLESS;
+    }
+    else
+    {
+      Gender::Threshold  threshold = Gender::GetThreshold(ratio);
+      
+      return (GenderValue() < threshold) ? Gender::FEMALE : Gender::MALE;
+    }
   }
   
   Ability::Type Gen34Ability() const
@@ -716,8 +769,8 @@ struct IndividualValues
   };
   
   static uint64_t AdjustExpectedResultsForHiddenPower
-    (uint64_t numResults, IndividualValues minIVs, IndividualValues maxIVs,
-     uint32_t typeMask, uint32_t minPower)
+    (uint64_t numResults, const IndividualValues &minIVs,
+     const IndividualValues &maxIVs, uint32_t typeMask, uint32_t minPower)
     throw (ImpossibleHiddenTypeException, ImpossibleMinHiddenPowerException);
 };
 
@@ -797,6 +850,22 @@ struct OptionalIVs
   bool isSet(int i) const
   { return (setIVs & (0x1 << i)) != 0; }
   
+  bool anySet() const
+  { return setIVs != 0; }
+  
+  uint32_t numSet() const
+  {
+    uint32_t  result = 0, mask = setIVs;
+    
+    while (mask > 0)
+    {
+      result += mask & 0x1;
+      mask >>= 1;
+    }
+    
+    return result;
+  }
+  
   bool allSet() const
   { return setIVs == 0x3f; }
   
@@ -869,6 +938,31 @@ struct OptionalIVs
     }
     
     return result;
+  }
+  
+  // This is for checking if the optional IVs could be in the given range,
+  // which is needed when looking for adjacent seeds when you don't know all
+  // of the egg IVs (due to not knowing all parent IVs)
+  //
+  // Compare with above two functions, which only return true if it is certain
+  // than the better than / worse than condition holds
+  bool isPossibleForIVRange(const IVs &lowIVs, const IVs &highIVs)
+  {
+    if (allSet())
+      return betterThanOrEqual(lowIVs) && worseThanOrEqual(highIVs);
+    
+    for (uint32_t idx = 0; idx < 6; ++idx)
+    {
+      if (isSet(idx))
+      {
+        uint32_t  iv = values.iv(idx);
+        
+        if ((iv < lowIVs.iv(idx)) || (iv > highIVs.iv(idx)))
+          return false;
+      }
+    }
+    
+    return true;
   }
   
   IVs      values;
@@ -963,13 +1057,15 @@ struct Characteristic
   };
   
   static Type Get(PID pid, IVs ivs);
+  static IVs::Type DecidingIVType(Type c);
+  static uint32_t IVMod5Value(Type c);
   static const std::string& ToString(Type c);
 };
 
 
-struct EncounterLead
+struct LeadAbility
 {
-  enum Ability
+  enum Type
   {
     NONE = -1,
     
@@ -979,9 +1075,9 @@ struct EncounterLead
     COMPOUND_EYES,
     SUCTION_CUPS,
     
-    NUM_ABILITIES,
+    NUM_LEAD_ABILITIES,
     
-    ANY = NUM_ABILITIES
+    ANY = NUM_LEAD_ABILITIES
   };
 };
 
@@ -1089,6 +1185,131 @@ struct EncounterSlot
 typedef EncounterSlot  ESV;
 
 
+struct Encounter
+{
+  enum Type
+  {
+    STARTER_FOSSIL_GIFT = 0,
+    STATIONARY,
+    GRASS_CAVE,
+    SURFING,
+    FISHING,
+    SWARM,
+    DOUBLES_GRASS,
+    SHAKING_GRASS,
+    SWIRLING_DUST,
+    BRIDGE_SHADOW,
+    WATER_SPOT_SURFING,
+    WATER_SPOT_FISHING,
+    NON_SHINY_STATIONARY,
+    ROAMER,
+    LARVESTA_EGG,
+    ENTRALINK,
+    HIDDEN_GROTTO,
+    
+    NUM_ENCOUNTER_TYPES
+  };
+  
+  static bool AllowsHiddenAbility(Type t)
+  {
+    switch (t)
+    {
+    case STARTER_FOSSIL_GIFT:
+    case STATIONARY:
+    case NON_SHINY_STATIONARY:
+    case ENTRALINK:
+    case HIDDEN_GROTTO:
+      return true;
+    
+    case GRASS_CAVE:
+    case SURFING:
+    case FISHING:
+    case SWARM:
+    case DOUBLES_GRASS:
+    case SHAKING_GRASS:
+    case SWIRLING_DUST:
+    case BRIDGE_SHADOW:
+    case WATER_SPOT_SURFING:
+    case WATER_SPOT_FISHING:
+    case ROAMER:
+    case LARVESTA_EGG:
+    default:
+      return false;
+    }
+  }
+  
+  static bool ForcesHiddenAbility(Type t)
+  {
+    return (t == ENTRALINK) || (t == HIDDEN_GROTTO);
+  }
+  
+  static bool HasSetGender(Type t)
+  {
+    return (t == ENTRALINK) || (t == HIDDEN_GROTTO);
+  }
+  
+  static bool UsesLeadAbility(Type t)
+  {
+    switch (t)
+    {
+    case STARTER_FOSSIL_GIFT:
+    case ROAMER:
+    case LARVESTA_EGG:
+    case ENTRALINK:
+      return false;
+      
+    case STATIONARY:
+    case GRASS_CAVE:
+    case SURFING:
+    case FISHING:
+    case SWARM:
+    case DOUBLES_GRASS:
+    case SHAKING_GRASS:
+    case SWIRLING_DUST:
+    case BRIDGE_SHADOW:
+    case WATER_SPOT_SURFING:
+    case WATER_SPOT_FISHING:
+    case NON_SHINY_STATIONARY:
+    case HIDDEN_GROTTO:
+    default:
+      return true;
+    }
+  }
+  
+  static ESV::Type SlotType(Type t)
+  {
+    switch (t)
+    {
+    case GRASS_CAVE:
+    case SWARM:
+    case DOUBLES_GRASS:
+    case SHAKING_GRASS:
+    case SWIRLING_DUST:
+    case BRIDGE_SHADOW:
+      return ESV::LAND_TYPE;
+      
+    case SURFING:
+    case WATER_SPOT_SURFING:
+      return ESV::SURF_TYPE;
+      
+    case FISHING:
+    case WATER_SPOT_FISHING:
+      return ESV::SUPER_ROD_TYPE;
+      
+    case STARTER_FOSSIL_GIFT:
+    case STATIONARY:
+    case NON_SHINY_STATIONARY:
+    case ROAMER:
+    case LARVESTA_EGG:
+    case ENTRALINK:
+    case HIDDEN_GROTTO:
+    default:
+      return ESV::NO_TYPE;
+    }
+  }
+};
+
+
 // type of item found in swirling dust or bridge shadows
 struct EncounterItem
 {
@@ -1165,8 +1386,8 @@ struct HeldItem
 };
 
 
-// special parents when breeding
-struct FemaleParent
+// type of the parent which determines the species when breeding
+struct SpeciesParent
 {
   enum Type
   {
@@ -1193,7 +1414,7 @@ struct EggSpecies
 };
 
 
-struct WonderCardShininess
+struct Shininess
 {
   enum Type
   {

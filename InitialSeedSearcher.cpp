@@ -32,15 +32,18 @@ namespace pprng
 uint64_t InitialIVSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  numIVs = IVs::CalculateNumberOfCombinations(minIVs, maxIVs);
   
-  return numSeeds * numIVs / (32 * 32 * 32 * 32 * 32 * 32);
+  return (numSeeds * numIVs / (32 * 32 * 32 * 32 * 32 * 32)) + 1;
 }
 
 void InitialIVSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler,
+   const std::vector<uint64_t> &startingSeeds)
 {
   HashedSeedSearcher::Criteria  c;
   
@@ -55,16 +58,18 @@ void InitialIVSeedSearcher::Search
   
   HashedSeedSearcher  searcher;
   
-  searcher.Search(c, resultHandler, progressHandler);
+  searcher.Search(c, resultHandler, statusHandler, startingSeeds);
 }
 
 uint64_t B2W2InitialSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  spinsDenominator = (0x1ULL << (3 * spins.NumSpins()));
   
-  return numSeeds / spinsDenominator;
+  return (numSeeds / spinsDenominator) + 1;
 }
 
 namespace
@@ -100,14 +105,20 @@ struct B2W2InitialSeedChecker
 
 void B2W2InitialSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler,
+   const std::vector<uint64_t> &startingSeeds)
 {
   HashedSeedGenerator     seedGenerator(criteria.seedParameters);
   B2W2InitialSeedChecker  seedChecker(criteria.spins, criteria.memoryLinkUsed);
   SearchRunner            searcher;
   
-  searcher.SearchThreaded(seedGenerator, seedChecker, seedChecker,
-                          resultHandler, progressHandler);
+  if (startingSeeds.size() > 0)
+    searcher.ContinueSearchThreaded(seedGenerator, seedChecker, seedChecker,
+                                    resultHandler, statusHandler,
+                                    startingSeeds);
+  else
+    searcher.SearchThreaded(seedGenerator, seedChecker, seedChecker,
+                            resultHandler, statusHandler);
 }
 
 }

@@ -32,38 +32,136 @@ namespace pprng
 class SearchRunner
 {
 public:
-  typedef boost::function<bool (double)>  ProgressCallback;
+  struct SearchDetails
+  {
+    uint32_t  threadNumber;
+    uint64_t  totalSeeds;
+    
+    SearchDetails(uint32_t threadNumber_, uint64_t totalSeeds_)
+      : threadNumber(threadNumber_), totalSeeds(totalSeeds_)
+    {}
+  };
   
+  
+  struct SearchProgress
+  {
+    const SearchDetails  &details;
+    
+    uint64_t  seedsSearched;
+    
+    SearchProgress(const SearchDetails &details_)
+      : details(details_), seedsSearched(0)
+    {}
+  };
+  
+  
+  struct StatusHandler
+  {
+    virtual ~StatusHandler() {}
+    
+    virtual void OnSearchDetails(const SearchDetails &) = 0;
+    virtual void OnSearchProgress(const SearchProgress &) = 0;
+    virtual bool OnPauseCheck() = 0;
+  };
+  
+  
+  static uint32_t NumThreads() { return boost::thread::hardware_concurrency(); }
+  
+  
+  // start a single-threaded search
   template <class SeedGenerator, class SeedSearcher, class ResultChecker,
             class ResultCallback>
   void Search(SeedGenerator &seedGenerator,
               SeedSearcher &seedSearcher,
               ResultChecker &resultChecker,
               ResultCallback &resultHandler,
-              const ProgressCallback &progressHandler,
-              uint32_t numSplits = 1)
+              StatusHandler &statusHandler)
   {
-    typedef typename SeedGenerator::SeedType               SeedType;
-    typedef typename SeedGenerator::SeedCountType          SeedCountType;
+    SearchDetails  details(0, seedGenerator.NumberOfSeeds());
     
-    SeedCountType  numSeeds = seedGenerator.NumberOfSeeds();
+    statusHandler.OnSearchDetails(details);
     
-    double  seedPercent = double(SeedGenerator::SeedsPerChunk) /
-                            (numSeeds * numSplits);
+    Search(seedGenerator, seedSearcher, resultChecker, resultHandler,
+           statusHandler, details, 0);
+  }
+  
+  
+  // start a new, threaded search
+  template <class SeedGenerator, class SeedSearcher, class ResultChecker,
+            class ResultCallback>
+  void SearchThreaded(SeedGenerator &seedGenerator,
+                      SeedSearcher &seedSearcher,
+                      ResultChecker &resultChecker,
+                      ResultCallback &resultHandler,
+                      StatusHandler &statusHandler)
+  {
+    std::list<SeedGenerator>  generators = seedGenerator.Split(NumThreads());
+    
+    std::vector<uint64_t>     startingSeeds(generators.size(), 0);
+    
+    SearchThreaded(generators, seedSearcher, resultChecker, resultHandler,
+                   statusHandler, startingSeeds);
+  }
+  
+  
+  // continue a previous threaded search
+  template <class SeedGenerator, class SeedSearcher, class ResultChecker,
+            class ResultCallback>
+  void ContinueSearchThreaded(SeedGenerator &seedGenerator,
+                              SeedSearcher &seedSearcher,
+                              ResultChecker &resultChecker,
+                              ResultCallback &resultHandler,
+                              StatusHandler &statusHandler,
+                              const std::vector<uint64_t> &startingSeeds)
+  {
+    std::list<SeedGenerator>  generators =
+      seedGenerator.Split(startingSeeds.size());
+    
+    SearchThreaded(generators, seedSearcher, resultChecker, resultHandler,
+                   statusHandler, startingSeeds);
+  }
+  
+  
+private:
+  // main search loop
+  template <class SeedGenerator, class SeedSearcher, class ResultChecker,
+            class ResultCallback>
+  void Search(SeedGenerator &seedGenerator,
+              SeedSearcher &seedSearcher,
+              ResultChecker &resultChecker,
+              ResultCallback &resultHandler,
+              StatusHandler &statusHandler,
+              const SearchDetails &searchDetails,
+              uint64_t startSeedNum)
+  {
+    typedef typename SeedGenerator::SeedType  SeedType;
+    
+    uint64_t  numSeeds = seedGenerator.NumberOfSeeds();
+    
+    double  seedPercent = double(SeedGenerator::SeedsPerChunk) / numSeeds;
     
     if (seedPercent > 0.002)
       seedPercent = 0.002;
     
-    SeedCountType stepPercentSeeds((seedPercent * (numSeeds * numSplits)) + 1);
+    uint64_t  seedsPerCallback = (seedPercent * numSeeds) + 1;
     
-    const double stepPercent = seedPercent * 100.0;
+    SearchProgress  searchProgress(searchDetails);
     
-    SeedCountType  threshold = stepPercentSeeds;
+    if (startSeedNum > 0)
+      seedGenerator.SkipSeeds(startSeedNum);
     
-    for (typename SeedGenerator::SeedCountType i = 0;
-         (i < numSeeds) && progressHandler(stepPercent);
-         /* empty */)
+    uint64_t  i = startSeedNum, threshold = i;
+    
+    // check once at the beginning in case we're starting paused
+    bool  continueSearch = statusHandler.OnPauseCheck();
+    
+    while ((i < searchDetails.totalSeeds) && continueSearch)
     {
+      threshold += seedsPerCallback;
+      
+      if (threshold > searchDetails.totalSeeds)
+        threshold = searchDetails.totalSeeds;
+      
       for (/* empty */; i < threshold; ++i)
       {
         SeedType  seed = seedGenerator.Next();
@@ -71,85 +169,130 @@ public:
         seedSearcher.Search(seed, resultChecker, resultHandler);
       }
       
-      threshold += stepPercentSeeds;
-      if (threshold > numSeeds)
-      {
-        threshold = numSeeds;
-      }
+      searchProgress.seedsSearched = threshold;
+      statusHandler.OnSearchProgress(searchProgress);
+      
+      continueSearch = statusHandler.OnPauseCheck();
     }
   }
   
+  
+  typedef std::deque<SearchProgress>  ProgressQueue;
+  
+  template <class ResultType>
+  struct CommonThreadData
+  {
+    typedef std::deque<ResultType>  ResultQueue;
+    
+    CommonThreadData(boost::condition_variable &condVar_, boost::mutex &mutex_,
+                     ProgressQueue &progressQueue_, ResultQueue &resultQueue_,
+                     bool &shouldContinue_, uint32_t &numActiveThreads_)
+      : condVar(condVar_), mutex(mutex_), progressQueue(progressQueue_),
+        resultQueue(resultQueue_), shouldContinue(shouldContinue_),
+        numActiveThreads(numActiveThreads_)
+    {}
+    
+    boost::condition_variable  &condVar;
+    boost::mutex               &mutex;
+    ProgressQueue              &progressQueue;
+    ResultQueue                &resultQueue;
+    bool                       &shouldContinue;
+    uint32_t                   &numActiveThreads;
+  };
+  
+  
+  // spawn threads and monitor for progress and results
   template <class SeedGenerator, class SeedSearcher, class ResultChecker,
             class ResultCallback>
-  void SearchThreaded(SeedGenerator &seedGenerator,
+  void SearchThreaded(std::list<SeedGenerator> &generators,
                       SeedSearcher &seedSearcher,
                       ResultChecker &resultChecker,
                       ResultCallback &resultHandler,
-                      const ProgressCallback &progressHandler)
+                      StatusHandler &statusHandler,
+                      const std::vector<uint64_t> &startingSeeds)
   {
     typedef typename SeedSearcher::ResultType  ResultType;
+    typedef std::deque<ResultType>             ResultQueue;
     
-    boost::condition_variable  progressUpdate;
-    boost::mutex               progressMutex,  resultMutex;
-    std::deque<double>         progressQueue;
-    std::deque<ResultType>     resultQueue;
+    uint32_t  numThreads = generators.size();
+    
+    typename std::list<SeedGenerator>::iterator  sg = generators.begin();
+    std::vector<uint64_t>::const_iterator        ss = startingSeeds.begin();
+    
+    typedef std::vector<SearchDetails>  DetailsVector;
+    DetailsVector  detailsVector;
+    
+    for (uint32_t i = 0; i < numThreads; ++i, ++sg, ++ss)
+    {
+      detailsVector.push_back(SearchDetails(i, sg->NumberOfSeeds()));
+      
+      statusHandler.OnSearchDetails(*detailsVector.rbegin());
+      
+      SearchProgress  progress(*detailsVector.rbegin());
+      progress.seedsSearched = *ss;
+      
+      statusHandler.OnSearchProgress(progress);
+    }
+    
+    // check if we are starting paused
+    if (!statusHandler.OnPauseCheck())
+      return;  // all that for nothing!
+    
+    uint32_t  numActiveThreads = numThreads;
+    
+    boost::condition_variable  condVar;
+    boost::mutex               mutex;
+    ProgressQueue              progressQueue;
+    ResultQueue                resultQueue;
     bool                       shouldContinue = true;
     
-    uint32_t  numProcs = boost::thread::hardware_concurrency();
-    
-    std::list<SeedGenerator>  generators = seedGenerator.Split(numProcs);
-    if (generators.size() < numProcs)
-      numProcs = generators.size();
+    CommonThreadData<ResultType>  commonData(condVar, mutex, progressQueue,
+                                             resultQueue, shouldContinue,
+                                             numActiveThreads);
     
     typedef std::list<boost::shared_ptr<boost::thread> >  ThreadList;
     ThreadList  threadList;
     
-    ThreadResultHandler<ResultType>  threadResultHandler(resultMutex,
-                                                         resultQueue);
-    ThreadProgressHandler  threadProgressHandler(progressUpdate, progressMutex,
-                                                 progressQueue, shouldContinue,
-                                                 numProcs);
+    typedef SearchFunctor<SeedGenerator, SeedSearcher, ResultChecker>
+            SearchFunctor;
     
-    typename std::list<SeedGenerator>::iterator  sg = generators.begin();
-    for (uint32_t i = 0; i < numProcs; ++i)
+    sg = generators.begin();
+    ss = startingSeeds.begin();
+    
+    DetailsVector::iterator  dt = detailsVector.begin();
+    for (; dt != detailsVector.end(); ++dt, ++sg, ++ss)
     {
-      SearchFunctor<SeedGenerator, SeedSearcher, ResultType, ResultChecker>
-        searchFunctor(*this, *sg++, seedSearcher, resultChecker,
-                      threadResultHandler, threadProgressHandler,
-                      numProcs);
+      SearchFunctor  searchFunctor(*this, commonData, *sg, seedSearcher,
+                                   resultChecker, *dt, *ss);
       
       boost::shared_ptr<boost::thread>  t(new boost::thread(searchFunctor));
       
       threadList.push_back(t);
     }
     
-    while (threadProgressHandler.m_numActiveThreads > 0)
+    while (numActiveThreads > 0)
     {
-      // update progress display
-      {
-        boost::unique_lock<boost::mutex>  lock(progressMutex);
-        
-        if (progressQueue.empty() &&
-            (threadProgressHandler.m_numActiveThreads > 0))
-          progressUpdate.wait(lock);
-        
-        while (!progressQueue.empty())
-        {
-          shouldContinue = shouldContinue &&
-                           progressHandler(progressQueue.front());
-          progressQueue.pop_front();
-        }
-      }
+      boost::unique_lock<boost::mutex>  lock(mutex);
+      
+      if (progressQueue.empty() && (numActiveThreads > 0))
+        condVar.wait(lock);
       
       // look for new results
+      while (!resultQueue.empty())
       {
-        boost::lock_guard<boost::mutex>  lock(resultMutex);
-        while (!resultQueue.empty())
-        {
-          resultHandler(resultQueue.front());
-          resultQueue.pop_front();
-        }
+        resultHandler(resultQueue.front());
+        resultQueue.pop_front();
       }
+      
+      // update progress
+      while (!progressQueue.empty())
+      {
+        statusHandler.OnSearchProgress(progressQueue.front());
+        
+        progressQueue.pop_front();
+      }
+      
+      shouldContinue = shouldContinue && statusHandler.OnPauseCheck();
     }
     
     ThreadList::iterator  it;
@@ -157,100 +300,122 @@ public:
       (*it)->join();
   }
   
-private:
+  // handle callbacks from each thread and queue them for handling
+  //   on the main thread
   template <typename ResultType>
   struct ThreadResultHandler
   {
-    ThreadResultHandler(boost::mutex &mut, std::deque<ResultType> &queue)
-      : m_mut(mut), m_queue(queue)
+    typedef std::deque<ResultType>  ResultQueue;
+    
+    ThreadResultHandler(ResultQueue &resultQueue)
+      : m_threadResultQueue(resultQueue)
     {}
     
     void operator()(const ResultType &result)
     {
-      boost::lock_guard<boost::mutex>  lock(m_mut);
-      
-      m_queue.push_back(result);
+      m_threadResultQueue.push_back(result);
     }
     
-    boost::mutex            &m_mut;
-    std::deque<ResultType>  &m_queue;
+    ResultQueue  &m_threadResultQueue;
   };
   
-  struct ThreadProgressHandler
+  
+  template <typename ResultType>
+  struct ThreadStatusHandler  : public StatusHandler
   {
-    ThreadProgressHandler(boost::condition_variable &condVar, boost::mutex &mut,
-                          std::deque<double> &queue, bool &shouldContinue,
-                          uint32_t numActiveThreads)
-      : m_condVar(condVar), m_mut(mut), m_queue(queue),
-        m_shouldContinue(shouldContinue), m_numActiveThreads(numActiveThreads)
+    typedef std::deque<ResultType>        ResultQueue;
+    typedef CommonThreadData<ResultType>  CommonThreadData;
+    
+    ThreadStatusHandler(CommonThreadData &commonData,
+                        ResultQueue &threadResultQueue)
+      : m_commonData(commonData), m_threadResultQueue(threadResultQueue)
     {}
     
-    bool operator()(double progress) const
+    void OnSearchDetails(const SearchDetails &)
+    {}
+    
+    void OnSearchProgress(const SearchProgress &searchProgress)
     {
       {
-        boost::unique_lock<boost::mutex>  lock(m_mut);
+        boost::unique_lock<boost::mutex>  lock(m_commonData.mutex);
         
-        m_queue.push_back(progress);
+        if (!m_threadResultQueue.empty())
+        {
+          m_commonData.resultQueue.insert(m_commonData.resultQueue.end(),
+                                          m_threadResultQueue.begin(),
+                                          m_threadResultQueue.end());
+          
+          m_threadResultQueue.clear();
+        }
         
-        m_condVar.notify_one();
+        m_commonData.progressQueue.push_back(searchProgress);
+        
+        m_commonData.condVar.notify_one();
+      }
+    }
+    
+    bool OnPauseCheck()
+    {
+      {
+        boost::unique_lock<boost::mutex>  lock(m_commonData.mutex);
       }
       
-      return m_shouldContinue;
+      return m_commonData.shouldContinue;
     }
     
-    void ThreadFinished()
-    {
-      {
-        boost::unique_lock<boost::mutex>  lock(m_mut);
-        
-        --m_numActiveThreads;
-        
-        m_condVar.notify_one();
-      }
-    }
-    
-    boost::condition_variable  &m_condVar;
-    boost::mutex               &m_mut;
-    std::deque<double>         &m_queue;
-    bool                       &m_shouldContinue;
-    uint32_t                   m_numActiveThreads;
+    CommonThreadData  &m_commonData;
+    ResultQueue       &m_threadResultQueue;
   };
   
-  template <class SeedGenerator, class SeedSearcher,
-            class ResultType, class ResultChecker>
+  
+  // function object that each thread invokes
+  template <class SeedGenerator, class SeedSearcher, class ResultChecker>
   struct SearchFunctor
   {
+    typedef typename SeedSearcher::ResultType  ResultType;
+    typedef std::deque<ResultType>             ResultQueue;
+    typedef CommonThreadData<ResultType>       CommonThreadData;
+    typedef ThreadResultHandler<ResultType>    ThreadResultHandler;
+    typedef ThreadStatusHandler<ResultType>    ThreadStatusHandler;
+    
     SearchFunctor(SearchRunner &searcher,
+                  CommonThreadData &commonData,
                   SeedGenerator &seedGenerator,
                   SeedSearcher &seedSearcher,
                   ResultChecker &resultChecker,
-                  ThreadResultHandler<ResultType> &resultHandler,
-                  ThreadProgressHandler &progressHandler,
-                  uint32_t numSplits)
-      : m_searcher(searcher),
-        m_seedGenerator(seedGenerator),
-        m_seedSearcher(seedSearcher),
-        m_resultChecker(resultChecker),
-        m_resultHandler(resultHandler),
-        m_progressHandler(progressHandler),
-        m_numSplits(numSplits)
+                  SearchDetails &searchDetails,
+                  uint64_t startingSeedNumber)
+      : m_searcher(searcher), m_commonThreadData(commonData),
+        m_seedGenerator(seedGenerator), m_seedSearcher(seedSearcher),
+        m_resultChecker(resultChecker), m_searchDetails(searchDetails),
+        m_startingSeedNumber(startingSeedNumber)
     {}
     
     void operator()()
     {
+      ResultQueue          threadResultQueue;
+      ThreadResultHandler  threadResultHandler(threadResultQueue);
+      ThreadStatusHandler  threadStatusHandler(m_commonThreadData,
+                                               threadResultQueue);
+      
       m_searcher.Search(m_seedGenerator, m_seedSearcher, m_resultChecker,
-                        m_resultHandler, m_progressHandler,
-                        m_numSplits);
-      m_progressHandler.ThreadFinished();
+                        threadResultHandler, threadStatusHandler,
+                        m_searchDetails, m_startingSeedNumber);
+      
+      boost::unique_lock<boost::mutex>  lock(m_commonThreadData.mutex);
+      
+      --m_commonThreadData.numActiveThreads;
+      
+      m_commonThreadData.condVar.notify_one();
     }
     
-    SearchRunner                     &m_searcher;
-    SeedGenerator                    &m_seedGenerator;
-    SeedSearcher                     &m_seedSearcher;
-    ResultChecker                    &m_resultChecker;
-    ThreadResultHandler<ResultType>  &m_resultHandler;
-    ThreadProgressHandler            &m_progressHandler;
-    const uint32_t                   m_numSplits;
+    SearchRunner      &m_searcher;
+    CommonThreadData  &m_commonThreadData;
+    SeedGenerator     &m_seedGenerator;
+    SeedSearcher      &m_seedSearcher;
+    ResultChecker     &m_resultChecker;
+    SearchDetails     &m_searchDetails;
+    uint64_t          m_startingSeedNumber;
   };
 };
 

@@ -41,7 +41,7 @@ public:
   
   template <class FrameChecker, class ResultCallback>
   bool Search(const SearchCriteria::FrameRange &frameRange,
-              FrameChecker checker, ResultCallback callback)
+              FrameChecker &checker, ResultCallback &callback)
   {
     uint32_t  limitFrame;
     bool      found = false;

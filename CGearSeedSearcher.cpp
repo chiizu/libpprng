@@ -47,6 +47,12 @@ public:
     return 256 * 24;
   }
   
+  void SkipSeeds(uint64_t numSeeds)
+  {
+    while (numSeeds-- > 0)
+      Next();
+  }
+  
   SeedType Next()
   {
     m_hour += 0x00010000;
@@ -192,7 +198,7 @@ uint64_t CGearSeedSearcher::Criteria::ExpectedNumberOfResults() const
 
 void CGearSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   FrameChecker  frameChecker(criteria);
   SearchRunner  searcher;
@@ -215,16 +221,16 @@ void CGearSeedSearcher::Search
     SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGenFactory,
                                                            criteria.frameRange);
     
-    searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                    resultHandler, progressHandler);
+    searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                    statusHandler);
   }
   else
   {
     FastSearchSeedGenerator  seedGenerator;
     FastSeedSearcher         seedSearcher(GetIVSeedMap(ivPattern), criteria);
     
-    searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                    resultHandler, progressHandler);
+    searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                    statusHandler);
   }
 }
 

@@ -36,12 +36,10 @@ struct SearchCriteria
     Ability::Type  ability;
     Gender::Type   gender;
     Gender::Ratio  genderRatio;
-    bool           startFromLowestFrame;
     
     PIDCriteria()
       : natureMask(0), ability(Ability::ANY),
-        gender(Gender::ANY), genderRatio(Gender::ANY_RATIO),
-        startFromLowestFrame(false)
+        gender(Gender::ANY), genderRatio(Gender::ANY_RATIO)
     {}
     
     bool CheckNature(Nature::Type nature) const
@@ -76,6 +74,12 @@ struct SearchCriteria
     IVPattern::Type GetPattern() const
     {
       return IVPattern::Get(min, max, (hiddenTypeMask != 0), minHiddenPower);
+    }
+    
+    bool CheckIVs(const IVs &ivs) const
+    {
+      return ivs.betterThanOrEqual(min) &&
+             (max.isMax() || ivs.worseThanOrEqual(max));
     }
     
     bool CheckHiddenPower(Element::Type hpType, uint32_t hpPower) const

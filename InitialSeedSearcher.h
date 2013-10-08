@@ -54,9 +54,10 @@ public:
   
   InitialIVSeedSearcher() {}
   
-  void Search(const Criteria &criteria,
-              const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+  void Search(const Criteria &criteria, const ResultCallback &resultHandler,
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 class B2W2InitialSeedSearcher
@@ -80,9 +81,10 @@ public:
   
   B2W2InitialSeedSearcher() {}
   
-  void Search(const Criteria &criteria,
-              const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+  void Search(const Criteria &criteria, const ResultCallback &resultHandler,
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 chiizu
+  Copyright (C) 2011-2013 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -285,12 +285,14 @@ uint32_t LazyMersenneTwisterRNG::FirstSectionLNextUInt32()
     uint32_t  prevMt = m_mt[offset - 1];
     m_mt[offset] = (1812433253UL * (prevMt ^ (prevMt >> 30))) + offset;
   
-    y = m_mt[m_mti++] = m_mt[m_mti + M] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    y = m_mt[m_mti] = m_mt[m_mti + M] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    ++m_mti;
   }
   else
   {
     // finished section L
-    y = m_mt[m_mti++] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    y = m_mt[m_mti] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    ++m_mti;
     
     m_nextUInt32Generator = &LazyMersenneTwisterRNG::SectionMNextUInt32;
   }
@@ -313,12 +315,14 @@ uint32_t LazyMersenneTwisterRNG::SectionLNextUInt32()
   
   if (m_mti < L)
   {
-    y = m_mt[m_mti++] = m_mt[m_mti + M] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    y = m_mt[m_mti] = m_mt[m_mti + M] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    ++m_mti;
   }
   else
   {
     // finished section L
-    y = m_mt[m_mti++] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    y = m_mt[m_mti] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    ++m_mti;
     
     m_nextUInt32Generator = &LazyMersenneTwisterRNG::SectionMNextUInt32;
   }
@@ -340,7 +344,8 @@ uint32_t LazyMersenneTwisterRNG::SectionMNextUInt32()
   {
     y = (m_mt[m_mti] & UPPER_MASK) | (m_mt[m_mti + 1] & LOWER_MASK);
     
-    y = m_mt[m_mti++] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    y = m_mt[m_mti] = m_mt[m_mti - L] ^ (y >> 1) ^ ((y & 0x1) * MATRIX_A);
+    ++m_mti;
   }
   else
   {

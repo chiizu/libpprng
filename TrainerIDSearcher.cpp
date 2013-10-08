@@ -70,6 +70,8 @@ struct FrameGeneratorFactory
 uint64_t TrainerIDSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
+  if (numSeeds == 0)
+    return 0;
   
   uint64_t  numFrames = frame.max - frame.min + 1;
   
@@ -78,12 +80,12 @@ uint64_t TrainerIDSearcher::Criteria::ExpectedNumberOfResults() const
   uint64_t  shinyDivisor =
     (hasShinyPID && (wildShiny || giftShiny || eggShiny)) ? 8192 : 1;
   
-  return numFrames * numSeeds / (tidDivisor * sidDivisor * shinyDivisor);
+  return (numFrames * numSeeds / (tidDivisor * sidDivisor * shinyDivisor)) + 1;
 }
 
 void TrainerIDSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   HashedSeedGenerator    seedGenerator(criteria.seedParameters);
   FrameGeneratorFactory  frameGeneratorFactory(criteria.shinyPID);
@@ -95,8 +97,8 @@ void TrainerIDSearcher::Search
   
   SearchRunner  searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  resultHandler, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                  statusHandler);
 }
 
 }

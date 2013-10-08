@@ -64,6 +64,29 @@ public:
     return m_timesList.size() * m_numGeneratorSeeds;
   }
   
+  void SkipSeeds(uint64_t numSeeds)
+  {
+    uint64_t  remainder = m_numGeneratorSeeds - m_seedNum;
+    if (numSeeds > remainder)
+    {
+      ++m_iter;
+      numSeeds -= remainder;
+      m_seedNum = 0;
+    
+      while (numSeeds > m_numGeneratorSeeds)
+      {
+        ++m_iter;
+        numSeeds -= m_numGeneratorSeeds;
+      }
+      
+      m_parameters.fromTime = m_parameters.toTime = m_iter->natureTime;
+      m_generator.reset(new HashedSeedGenerator(m_parameters));
+    }
+    
+    m_seedNum += numSeeds;
+    m_generator->SkipSeeds(numSeeds);
+  }
+  
   SeedType Next()
   {
     if (m_seedNum++ >= m_numGeneratorSeeds)
@@ -257,16 +280,17 @@ struct FrameGeneratorFactory
   {
     Gen5PIDFrameGenerator::Parameters  p;
     
-    p.frameType = Gen5PIDFrameGenerator::EntraLinkFrame;
-    p.leadAbility = EncounterLead::OTHER;
-    p.targetGender = criteria.pid.gender;
-    p.targetRatio = criteria.pid.genderRatio;
+    p.encounterType = Encounter::ENTRALINK;
+    p.leadAbility = LeadAbility::OTHER;
+    p.setGender = criteria.pid.gender;
+    
+    for (int i = 0; i < 13; ++i)
+      p.setRatio[i] = criteria.pid.genderRatio;
+    
     p.tid = 0;
     p.sid = 0;
-    p.isBlack2White2 = false;
     p.hasShinyCharm = false;
     p.memoryLinkUsed = false;
-    p.startFromLowestFrame = criteria.pid.startFromLowestFrame;
     
     return p;
   }
@@ -285,25 +309,20 @@ uint64_t CGearNatureSearcher::Criteria::ExpectedNumberOfResults() const
 
 void CGearNatureSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   NatureSeedGenerator       seedGenerator(criteria);
   
   FrameGeneratorFactory     frameGenFactory(criteria);
   
-  // slightly hacky...
-  SearchCriteria::FrameRange  frameRange
-    (criteria.pid.startFromLowestFrame ? 1 : criteria.frameRange.min,
-     criteria.frameRange.max);
-  
   SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGenFactory,
-                                                         frameRange);
+                                                         criteria.frameRange);
   FrameChecker              frameChecker(criteria);
   
   SearchRunner              searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  resultHandler, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
+                  statusHandler);
 }
 
 }

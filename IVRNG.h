@@ -81,17 +81,23 @@ public:
     Roamer
   };
   
-  Gen5BufferingIVRNG(RNG &rng, FrameType frameType)
-    : m_RNG(rng), m_word(0),
+  // will have undefined behavior if all IVs are set
+  Gen5BufferingIVRNG(RNG &rng, FrameType frameType,
+                     const OptionalIVs &setIVs = OptionalIVs())
+    : m_RNG(rng), m_setIVs(setIVs), m_word(0),
       m_IVWordGenerator((frameType == Normal) ?
-                        &Gen5BufferingIVRNG::NextNormalIVWord :
+                        (setIVs.anySet() ?
+                         &Gen5BufferingIVRNG::NextSetIVsNormalIVWord :
+                         &Gen5BufferingIVRNG::NextNormalIVWord) :
                         &Gen5BufferingIVRNG::NextRoamerIVWord)
   {
     if (frameType == Roamer)
       m_RNG.Next();  // unknown call
     
+    const uint32_t  numSetIVs = setIVs.numSet();
+    
     uint32_t  word = 0;
-    for (uint32_t i = 0; i < 5; ++i)
+    for (uint32_t i = 0; i < (5 - numSetIVs); ++i)
       word = NextRawWord(word);
     
     m_word = word;
@@ -105,7 +111,7 @@ public:
     return (this->*m_IVWordGenerator)(word);
   }
   
-private:
+//private:
   uint32_t NextRawWord(uint32_t currentWord)
   {
     return (currentWord >> 5) | (uint32_t(m_RNG.Next() >> LowBitOffset) << 25);
@@ -131,67 +137,25 @@ private:
     return result;
   }
   
-  RNG       &m_RNG;
-  uint32_t  m_word;
-};
-
-
-// for use in cases when the RNG passed in will handle any buffering needed
-// - generally used in cases where IV generation is part of a larger sequence
-//   of RNG class (in particular, WonderCards)
-template <class RNG>
-class Gen5NonBufferingIVRNG
-{
-public:
-  enum { LowBitOffset = (sizeof(typename RNG::ReturnType) * 8) - 5 };
-  
-  enum FrameType
+  uint32_t NextSetIVsNormalIVWord(uint32_t buffer)
   {
-    Normal = 0,
-    Roamer
-  };
-  
-  Gen5NonBufferingIVRNG(RNG &rng, FrameType frameType)
-    : m_RNG(rng),
-      m_IVWordGenerator((frameType == Normal) ?
-                        &Gen5NonBufferingIVRNG::NextNormalIVWord :
-                        &Gen5NonBufferingIVRNG::NextRoamerIVWord)
-  {}
-  
-  uint32_t NextIVWord()
-  {
-    return (this->*m_IVWordGenerator)();
-  }
-  
-private:
-  typedef uint32_t (Gen5NonBufferingIVRNG::*IVWordGenerator)();
-  
-  const IVWordGenerator  m_IVWordGenerator;
-  
-  uint32_t NextNormalIVWord()
-  {
-    return ((m_RNG.Next() >> LowBitOffset) << IVs::HP_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::AT_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::DF_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SA_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SD_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SP_SHIFT);
-  }
-  
-  uint32_t NextRoamerIVWord()
-  {
-    // unknown call
-    m_RNG.Next();
+    IVs  current(NextNormalIVWord(buffer));
+    IVs  result;
+    int  ivIdx = IVs::SP;
     
-    return ((m_RNG.Next() >> LowBitOffset) << IVs::HP_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::AT_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::DF_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SD_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SP_SHIFT) |
-           ((m_RNG.Next() >> LowBitOffset) << IVs::SA_SHIFT);
+    result.sp(m_setIVs.isSet(IVs::SP) ? m_setIVs.sp() : current.iv(ivIdx--));
+    result.sd(m_setIVs.isSet(IVs::SD) ? m_setIVs.sd() : current.iv(ivIdx--));
+    result.sa(m_setIVs.isSet(IVs::SA) ? m_setIVs.sa() : current.iv(ivIdx--));
+    result.df(m_setIVs.isSet(IVs::DF) ? m_setIVs.df() : current.iv(ivIdx--));
+    result.at(m_setIVs.isSet(IVs::AT) ? m_setIVs.at() : current.iv(ivIdx--));
+    result.hp(m_setIVs.isSet(IVs::HP) ? m_setIVs.hp() : current.iv(ivIdx--));
+    
+    return result.word;
   }
   
-  RNG  &m_RNG;
+  RNG          &m_RNG;
+  OptionalIVs  m_setIVs;
+  uint32_t     m_word;
 };
 
 }

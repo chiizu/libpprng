@@ -55,7 +55,9 @@ public:
   HashedSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

@@ -43,19 +43,17 @@ public:
     
     SearchCriteria::IVCriteria   ivs;
     SearchCriteria::FrameRange   ivFrame;
-    OptionalIVs                  femaleIVs, maleIVs;
+    OptionalIVs                  xParentIVs, yParentIVs;
     
     SearchCriteria::PIDCriteria  pid;
     SearchCriteria::FrameRange   pidFrame;
-    bool                         inheritsHiddenAbility;
     bool                         shinyOnly;
     EggSpecies::Type             eggSpecies;
     
     Criteria()
       : seedParameters(), frameParameters(),
-        ivs(), ivFrame(), femaleIVs(), maleIVs(),
-        pid(), pidFrame(),
-        inheritsHiddenAbility(false), shinyOnly(false),
+        ivs(), ivFrame(), xParentIVs(), yParentIVs(),
+        pid(), pidFrame(), shinyOnly(false),
         eggSpecies(EggSpecies::ANY)
     {}
     
@@ -68,7 +66,9 @@ public:
   EggSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
   
   // if not running from the command line, working directory may not be set
   static void SetCacheDirectory(const std::string &dir);

@@ -112,19 +112,22 @@ struct Gen4BreedingFrame
   uint32_t  rngValue;
   IVs       baseIVs;
   
-  enum Inheritance
+  struct Inheritance
   {
-    NotInherited = 0,
-    ParentA,
-    ParentB
+    enum Type
+    {
+      None = 0,
+      ParentA,
+      ParentB
+    };
   };
   
-  Inheritance  inheritance[6];
+  Inheritance::Type  inheritance[6];
   
   void ResetInheritance()
   {
     for (uint32_t i = 0; i < 6; ++i)
-      inheritance[i] = NotInherited;
+      inheritance[i] = Inheritance::None;
   }
 };
 
@@ -149,17 +152,28 @@ struct Gen5PIDFrame
 {
   Gen5PIDFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed        seed;
-  uint32_t                number;
-  uint64_t                rngValue;
-  bool                    isEncounter;
-  EncounterItem::Type     encounterItem;
-  EncounterLead::Ability  leadAbility;
-  bool                    abilityActivated;
-  PID                     pid;
-  Nature::Type            nature;
-  ESV::Value              esv;
-  HeldItem::Type          heldItem;
+  const HashedSeed     seed;
+  uint32_t             number;
+  uint64_t             rngValue;
+  bool                 isEncounter;
+  Encounter::Type      encounterType;
+  EncounterItem::Type  encounterItem;
+  LeadAbility::Type    leadAbility;
+  bool                 abilityActivated;
+  PID                  pid;
+  Ability::Type        ability;
+  Nature::Type         nature;
+  ESV::Value           esv;
+  HeldItem::Type       heldItem;
+};
+
+struct Gen5EncounterFrame : public Gen5PIDFrame
+{
+  Gen5EncounterFrame(const Gen5PIDFrame &f, uint32_t ivFrameNumber_, IVs ivs_)
+    : Gen5PIDFrame(f), ivFrameNumber(ivFrameNumber_), ivs(ivs_) {}
+  
+  uint32_t  ivFrameNumber;
+  IVs       ivs;
 };
 
 struct CGearIVFrame
@@ -171,104 +185,112 @@ struct CGearIVFrame
 
 struct HashedIVFrame
 {
-  HashedIVFrame(const HashedSeed &s) : seed(s) {}
+  explicit HashedIVFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed  seed;
-  uint32_t          number;
-  IVs               ivs;
+  HashedSeed  seed;
+  uint32_t    number;
+  IVs         ivs;
 };
 
 struct WonderCardFrame
 {
-  WonderCardFrame(const HashedSeed &s) : seed(s) {}
+  explicit WonderCardFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed  seed;
-  uint32_t          number;
-  uint64_t          rngValue;
-  PID               pid;
-  Nature::Type      nature;
-  bool              hasHiddenAbility;
-  IVs               ivs;
+  HashedSeed     seed;
+  uint32_t       number;
+  uint64_t       rngValue;
+  PID            pid;
+  Ability::Type  ability;
+  Nature::Type   nature;
+  bool           hasHiddenAbility;
+  IVs            ivs;
 };
 
 struct Gen5TrainerIDFrame
 {
-  Gen5TrainerIDFrame(const HashedSeed &s) : seed(s) {}
+  explicit Gen5TrainerIDFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed  seed;
-  uint32_t          number;
-  uint32_t          tid, sid;
-  bool              wildShiny, giftShiny, eggShiny;
+  HashedSeed  seed;
+  uint32_t    number;
+  uint32_t    tid, sid;
+  bool        wildShiny, giftShiny, eggShiny;
 };
 
 struct Gen5BreedingFrame
 {
-  Gen5BreedingFrame(const HashedSeed &s)
+  explicit Gen5BreedingFrame(const HashedSeed &s)
     : seed(s)
   {
     ResetInheritance();
   }
   
-  const HashedSeed  seed;
+  HashedSeed        seed;
   uint32_t          number;
   uint64_t          rngValue;
-  bool              everstoneActivated;
-  bool              inheritsHiddenAbility;
   EggSpecies::Type  species;
   Nature::Type      nature;
   PID               pid;
+  Ability::Type     ability;
   
-  enum Inheritance
+  struct Inheritance
   {
-    NotInherited = 0,
-    ParentX,
-    ParentY
+    enum Type
+    {
+      None = 0,
+      ParentX,
+      ParentY
+    };
   };
   
-  Inheritance      inheritance[6];
+  Inheritance::Type  inheritance[IVs::NUM_IVS];
   
   void ResetInheritance()
   {
     for (uint32_t i = 0; i < 6; ++i)
-      inheritance[i] = NotInherited;
+      inheritance[i] = Inheritance::None;
   }
 };
 
 struct Gen5EggFrame : public Gen5BreedingFrame
 {
   Gen5EggFrame(const Gen5BreedingFrame &f, uint32_t ivFrame, IVs baseIVs,
-               const OptionalIVs &parentXIVs, const OptionalIVs &parentYIVs);
+               const OptionalIVs &xParentIVs, const OptionalIVs &yParentIVs);
+  
+  Gen5EggFrame(const HashedSeed &s, uint32_t ivFrame, IVs baseIVs,
+               const OptionalIVs &xParentIVs, const OptionalIVs &yParentIVs);
   
   typedef Gen5BreedingFrame::Inheritance  Inheritance;
   
-  uint32_t              ivFrameNumber;
-  OptionalIVs           ivs;
-  Characteristic::Type  characteristic;
+  void SetBreedingFrame(const Gen5BreedingFrame &f);
+  
+  uint32_t     ivFrame;
+  IVs          baseIVs;
+  OptionalIVs  ivs, xParentIVs, yParentIVs;
 };
 
 struct DreamRadarFrame
 {
-  DreamRadarFrame(const HashedSeed &s) : seed(s) {}
+  explicit DreamRadarFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed  seed;
-  uint32_t          number;
-  uint64_t          rngValue;
-  PID               pid;
-  Nature::Type      nature;
-  IVs               ivs;
+  HashedSeed    seed;
+  uint32_t      number;
+  uint64_t      rngValue;
+  PID           pid;
+  Nature::Type  nature;
+  IVs           ivs;
 };
 
 struct HiddenHollowSpawnFrame
 {
-  HiddenHollowSpawnFrame(const HashedSeed &s) : seed(s) {}
+  explicit HiddenHollowSpawnFrame(const HashedSeed &s) : seed(s) {}
   
-  const HashedSeed  seed;
-  uint32_t          number;
-  uint64_t          rngValue;
-  bool              isSpawn;
-  uint32_t          group;
-  uint32_t          slot;
-  uint32_t          genderPercentage;
+  HashedSeed  seed;
+  uint32_t    number;
+  uint64_t    rngValue;
+  bool        isSpawn;
+  uint32_t    group;
+  uint32_t    slot;
+  uint32_t    genderPercentage;
 };
 
 }

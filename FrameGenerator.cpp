@@ -71,7 +71,7 @@ HashedIVFrameGenerator::HashedIVFrameGenerator
   : m_RNG(seed.rawSeed >> 32), m_IVRNG(m_RNG, IVRNG::FrameType(frameType)),
     m_frame(seed)
 {
-  if (Game::IsBlack2White2(seed.parameters.version))
+  if (Game::IsBlack2White2(seed.parameters.gameColor))
   {
     // b2w2 skips first 2 frames
     m_IVRNG.NextIVWord();
@@ -99,33 +99,31 @@ void HashedIVFrameGenerator::AdvanceFrame()
 
 Gen5PIDFrameGenerator::Gen5PIDFrameGenerator
   (const HashedSeed &seed, const Gen5PIDFrameGenerator::Parameters &parameters)
-  : m_PIDGenerator(s_FrameGeneratorInfo[parameters.frameType].pidGenerator),
+  : m_PIDGenerator(s_FrameGeneratorInfo[parameters.encounterType].pidGenerator),
     m_PIDFrameGenerator
-      (s_FrameGeneratorInfo[parameters.frameType].pidFrameGenerator),
-    m_ESVGenerator(parameters.isBlack2White2 ?
-                   s_FrameGeneratorInfo[parameters.frameType].b2w2EsvGenerator :
-                   s_FrameGeneratorInfo[parameters.frameType].bwEsvGenerator),
+      (s_FrameGeneratorInfo[parameters.encounterType].pidFrameGenerator),
+    m_ESVGenerator(Game::IsBlack2White2(m_frame.seed.parameters.gameColor) ?
+                   s_FrameGeneratorInfo[parameters.encounterType]
+                     .b2w2EsvGenerator :
+                   s_FrameGeneratorInfo[parameters.encounterType]
+                     .bwEsvGenerator),
     m_RNG(seed.rawSeed), m_frame(seed), m_parameters(parameters),
     m_shinyChances((m_parameters.hasShinyCharm &&
-                    Game::IsBlack2White2(m_frame.seed.parameters.version)) ?
+                    Game::IsBlack2White2(m_frame.seed.parameters.gameColor)) ?
                       3 : 1)
 {
+  uint32_t  skippedFrames = seed.GetSkippedPIDFrames(parameters.memoryLinkUsed);
+  m_RNG.AdvanceBuffer(skippedFrames);
+  
   m_frame.number = 0;
   m_frame.rngValue = 0;
-  m_frame.leadAbility = parameters.leadAbility;
   m_frame.isEncounter = true;
+  m_frame.encounterType = parameters.encounterType;
   m_frame.encounterItem = EncounterItem::NONE;
-  m_frame.abilityActivated = (parameters.frameType != EntraLinkFrame);
+  m_frame.leadAbility = parameters.leadAbility;
+  m_frame.abilityActivated = (parameters.encounterType != Encounter::ENTRALINK);
   m_frame.esv = ESV::NO_SLOT;
   m_frame.heldItem = HeldItem::NO_ITEM;
-  
-  if (parameters.startFromLowestFrame)
-  {
-    uint32_t  skippedFrames =
-      seed.GetSkippedPIDFrames(parameters.memoryLinkUsed);
-    m_RNG.AdvanceBuffer(skippedFrames);
-    m_frame.number += skippedFrames;
-  }
 }
 
 void Gen5PIDFrameGenerator::SkipFrames(uint32_t numFrames)
@@ -147,91 +145,91 @@ void Gen5PIDFrameGenerator::AdvanceFrame()
 
 const Gen5PIDFrameGenerator::FrameGeneratorInfo
   Gen5PIDFrameGenerator::s_FrameGeneratorInfo
-    [Gen5PIDFrameGenerator::NumFrameTypes] =
+    [Encounter::NUM_ENCOUNTER_TYPES] =
 {
-  // GrassCaveFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextWildFrame,
-    &Gen5PIDFrameGenerator::BWLandESV,
-    &Gen5PIDFrameGenerator::B2W2LandESV },
-  // SurfingFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextWildFrame,
-    &Gen5PIDFrameGenerator::BWSurfESV,
-    &Gen5PIDFrameGenerator::B2W2SurfESV },
-  // FishingFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextFishingFrame,
-    &Gen5PIDFrameGenerator::BWFishingESV,
-    &Gen5PIDFrameGenerator::B2W2FishingESV },
-  // SwarmFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextSwarmFrame,
-    &Gen5PIDFrameGenerator::BWLandESV,
-    &Gen5PIDFrameGenerator::B2W2LandESV },
-  // ShakingGrassFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextWildFrame,
-    &Gen5PIDFrameGenerator::BWLandESV,
-    &Gen5PIDFrameGenerator::B2W2LandESV },
-  // SwirlingDustFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextDustFrame,
-    &Gen5PIDFrameGenerator::BWLandESV,
-    &Gen5PIDFrameGenerator::B2W2LandESV },
-  // BridgeShadowFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextShadowFrame,
-    &Gen5PIDFrameGenerator::BWLandESV,
-    &Gen5PIDFrameGenerator::B2W2LandESV },
-  // WaterSpotSurfingFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextWildFrame,
-    &Gen5PIDFrameGenerator::BWSurfESV,
-    &Gen5PIDFrameGenerator::B2W2SurfESV },
-  // WaterSpotFishingFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextWildFrame,
-    &Gen5PIDFrameGenerator::BWFishingESV,
-    &Gen5PIDFrameGenerator::B2W2FishingESV },
-  // EntraLinkFrame
-  { &Gen5PIDFrameGenerator::NextEntraLinkPID,
-    &Gen5PIDFrameGenerator::NextEntraLinkFrame,
-    &Gen5PIDFrameGenerator::NoESV,
-    &Gen5PIDFrameGenerator::NoESV },
-  // StationaryFrame
-  { &Gen5PIDFrameGenerator::NextWildPID,
-    &Gen5PIDFrameGenerator::NextStationaryFrame,
-    &Gen5PIDFrameGenerator::NoESV,
-    &Gen5PIDFrameGenerator::NoESV },
-  // ZekReshVicFrame
-  { &Gen5PIDFrameGenerator::NextNonShinyPID,
-    &Gen5PIDFrameGenerator::NextStationaryFrame,
-    &Gen5PIDFrameGenerator::NoESV,
-    &Gen5PIDFrameGenerator::NoESV },
-  // StarterFossilGiftFrame
+  // STARTER_FOSSIL_GIFT
   { &Gen5PIDFrameGenerator::NextGiftPID,
     &Gen5PIDFrameGenerator::NextSimpleFrame,
     &Gen5PIDFrameGenerator::NoESV,
     &Gen5PIDFrameGenerator::NoESV },
-  // RoamerFrame
-  { &Gen5PIDFrameGenerator::NextRoamerPID,
-    &Gen5PIDFrameGenerator::NextSimpleFrame,
+  // STATIONARY
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextStationaryFrame,
     &Gen5PIDFrameGenerator::NoESV,
     &Gen5PIDFrameGenerator::NoESV },
-  // DoublesFrame
+  // GRASS_CAVE
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextWildFrame,
+    &Gen5PIDFrameGenerator::BWLandESV,
+    &Gen5PIDFrameGenerator::B2W2LandESV },
+  // SURFING
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextWildFrame,
+    &Gen5PIDFrameGenerator::BWSurfESV,
+    &Gen5PIDFrameGenerator::B2W2SurfESV },
+  // FISHING
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextFishingFrame,
+    &Gen5PIDFrameGenerator::BWFishingESV,
+    &Gen5PIDFrameGenerator::B2W2FishingESV },
+  // SWARM
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextSwarmFrame,
+    &Gen5PIDFrameGenerator::BWLandESV,
+    &Gen5PIDFrameGenerator::B2W2LandESV },
+  // DOUBLES_GRASS
   { &Gen5PIDFrameGenerator::NextWildPID,
     &Gen5PIDFrameGenerator::NextDoublesFrame,
     &Gen5PIDFrameGenerator::BWLandESV,
     &Gen5PIDFrameGenerator::B2W2LandESV },
-  // HiddenHollowFrame
-  { &Gen5PIDFrameGenerator::NextHiddenHollowPID,
-    &Gen5PIDFrameGenerator::NextHiddenHollowFrame,
+  // SHAKING_GRASS
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextWildFrame,
+    &Gen5PIDFrameGenerator::BWLandESV,
+    &Gen5PIDFrameGenerator::B2W2LandESV },
+  // SWIRLING_DUST
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextDustFrame,
+    &Gen5PIDFrameGenerator::BWLandESV,
+    &Gen5PIDFrameGenerator::B2W2LandESV },
+  // BRIDGE_SHADOW
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextShadowFrame,
+    &Gen5PIDFrameGenerator::BWLandESV,
+    &Gen5PIDFrameGenerator::B2W2LandESV },
+  // WATER_SPOT_SURFING
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextWildFrame,
+    &Gen5PIDFrameGenerator::BWSurfESV,
+    &Gen5PIDFrameGenerator::B2W2SurfESV },
+  // WATER_SPOT_FISHING
+  { &Gen5PIDFrameGenerator::NextWildPID,
+    &Gen5PIDFrameGenerator::NextWildFrame,
+    &Gen5PIDFrameGenerator::BWFishingESV,
+    &Gen5PIDFrameGenerator::B2W2FishingESV },
+  // NON_SHINY_STATIONARY
+  { &Gen5PIDFrameGenerator::NextNonShinyPID,
+    &Gen5PIDFrameGenerator::NextStationaryFrame,
     &Gen5PIDFrameGenerator::NoESV,
     &Gen5PIDFrameGenerator::NoESV },
-  // LarvestaEggFrame
+  // ROAMER
+  { &Gen5PIDFrameGenerator::NextRoamerPID,
+    &Gen5PIDFrameGenerator::NextSimpleFrame,
+    &Gen5PIDFrameGenerator::NoESV,
+    &Gen5PIDFrameGenerator::NoESV },
+  // LARVESTA_EGG
   { &Gen5PIDFrameGenerator::NextRoamerPID,
     &Gen5PIDFrameGenerator::NextLarvestaEggFrame,
+    &Gen5PIDFrameGenerator::NoESV,
+    &Gen5PIDFrameGenerator::NoESV },
+  // ENTRALINK
+  { &Gen5PIDFrameGenerator::NextEntraLinkPID,
+    &Gen5PIDFrameGenerator::NextEntraLinkFrame,
+    &Gen5PIDFrameGenerator::NoESV,
+    &Gen5PIDFrameGenerator::NoESV },
+  // HIDDEN_GROTTO
+  { &Gen5PIDFrameGenerator::NextHiddenHollowPID,
+    &Gen5PIDFrameGenerator::NextHiddenHollowFrame,
     &Gen5PIDFrameGenerator::NoESV,
     &Gen5PIDFrameGenerator::NoESV }
 };
@@ -286,15 +284,17 @@ void Gen5PIDFrameGenerator::NoESV()
 void Gen5PIDFrameGenerator::NextWildPID()
 {
   uint32_t  shinyChances = m_shinyChances;
+  uint32_t  slot = (m_frame.esv == ESV::NO_SLOT) ? 0 : ESV::Slot(m_frame.esv);
   
   do
   {
-    if ((m_parameters.leadAbility == EncounterLead::CUTE_CHARM) &&
+    if ((m_parameters.leadAbility == LeadAbility::CUTE_CHARM) &&
+        (m_parameters.setRatio[slot] != Gender::NO_RATIO) &&
         m_frame.abilityActivated)
     {
       m_frame.pid = Gen5PIDRNG::NextCuteCharmPIDWord
-                      (m_RNG, m_parameters.targetGender,
-                       m_parameters.targetRatio,
+                      (m_RNG, m_parameters.setGender,
+                       m_parameters.setRatio[slot],
                        m_parameters.tid, m_parameters.sid);
     }
     else
@@ -310,14 +310,16 @@ void Gen5PIDFrameGenerator::NextWildPID()
 void Gen5PIDFrameGenerator::NextEntraLinkPID()
 {
   m_frame.pid = Gen5PIDRNG::NextEntraLinkPIDWord
-                  (m_RNG, m_parameters.targetGender, m_parameters.targetRatio,
+                  (m_RNG, m_parameters.setGender,
+                   m_parameters.setRatio[0],
                    m_parameters.tid, m_parameters.sid);
 }
 
 void Gen5PIDFrameGenerator::NextHiddenHollowPID()
 {
   m_frame.pid = Gen5PIDRNG::NextDreamRadarPIDWord
-                  (m_RNG, m_parameters.targetGender, m_parameters.targetRatio,
+                  (m_RNG, m_parameters.setGender,
+                   m_parameters.setRatio[0],
                    m_parameters.tid, m_parameters.sid);
 }
 
@@ -369,7 +371,7 @@ void Gen5PIDFrameGenerator::NextFishingFrame()
 {
   CheckLeadAbility();
   
-  if (m_parameters.leadAbility == EncounterLead::SUCTION_CUPS)
+  if (m_parameters.leadAbility == LeadAbility::SUCTION_CUPS)
     m_frame.isEncounter = true;
   else
     m_frame.isEncounter = (((m_RNG.Next() >> 32) * 100) >> 32) < 50;
@@ -538,7 +540,7 @@ void Gen5PIDFrameGenerator::NextEntraLinkFrame()
   m_RNG.Next();
   m_RNG.Next();
   
-  m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+  NextNature();
 }
 
 void Gen5PIDFrameGenerator::NextHiddenHollowFrame()
@@ -555,13 +557,34 @@ void Gen5PIDFrameGenerator::NextHiddenHollowFrame()
 void Gen5PIDFrameGenerator::NextLarvestaEggFrame()
 {
   NextRoamerPID();
+  ApplyAbility();
   m_RNG.Next();
-  m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+  NextNature();
 }
 
 void Gen5PIDFrameGenerator::NextSimpleFrame()
 {
   (this->*m_PIDGenerator)();
+  ApplyAbility();
+  NextNature();
+}
+
+void Gen5PIDFrameGenerator::ApplyAbility()
+{
+  if (m_parameters.setAbility == Ability::ANY)
+  {
+    m_frame.ability = m_frame.pid.Gen5Ability();
+  }
+  else
+  {
+    m_frame.pid = Gen5PIDRNG::ForceAbility(m_frame.pid.word,
+                                           m_parameters.setAbility);
+    m_frame.ability = m_parameters.setAbility;
+  }
+}
+
+void Gen5PIDFrameGenerator::NextNature()
+{
   m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
 }
 
@@ -569,19 +592,19 @@ void Gen5PIDFrameGenerator::CheckLeadAbility()
 {
   switch (m_parameters.leadAbility)
   {
-  case EncounterLead::SYNCHRONIZE:
+  case LeadAbility::SYNCHRONIZE:
     m_frame.abilityActivated = (m_RNG.Next() >> 63) == 0x1;
     break;
     
-  case EncounterLead::CUTE_CHARM:
+  case LeadAbility::CUTE_CHARM:
     m_frame.abilityActivated =
       ((((m_RNG.Next() >> 32) * 0xFFFF) >> 32) / 0x290) < 67;
     break;
     
-  case EncounterLead::OTHER:
-  case EncounterLead::SUCTION_CUPS:
+  case LeadAbility::OTHER:
+  case LeadAbility::SUCTION_CUPS:
     m_RNG.Next();  // still consumed
-  case EncounterLead::COMPOUND_EYES:
+  case LeadAbility::COMPOUND_EYES:
   default:
     break;
   }
@@ -589,7 +612,7 @@ void Gen5PIDFrameGenerator::CheckLeadAbility()
 
 void Gen5PIDFrameGenerator::ApplySync()
 {
-  if ((m_parameters.leadAbility == EncounterLead::SYNCHRONIZE) &&
+  if ((m_parameters.leadAbility == LeadAbility::SYNCHRONIZE) &&
       m_frame.abilityActivated)
     m_frame.nature = Nature::SYNCHRONIZE;
 }
@@ -598,7 +621,7 @@ void Gen5PIDFrameGenerator::NextHeldItem()
 {
   uint32_t  heldItemPercent = ((m_RNG.Next() >> 32) * 100) >> 32;
   
-  if (m_parameters.leadAbility == EncounterLead::COMPOUND_EYES)
+  if (m_parameters.leadAbility == LeadAbility::COMPOUND_EYES)
   {
     if (heldItemPercent < 60)
     {
@@ -638,38 +661,44 @@ void Gen5PIDFrameGenerator::NextHeldItem()
   }
 }
 
-
 WonderCardFrameGenerator::WonderCardFrameGenerator(const HashedSeed &seed,
                                                    const Parameters &parameters)
   : m_initialValueRNG(seed.rawSeed),
-    m_RNG(seed.rawSeed), m_IVRNG(m_RNG, IVRNG::Normal),
-    m_frame(seed),
-    m_parameters(parameters),
-    m_isGLAN((parameters.cardNature == Nature::ANY) &&
-             ((parameters.cardGender == Gender::FEMALE) ||
-              (parameters.cardGender == Gender::MALE)))
+    m_RNG(seed.rawSeed), m_IVRNG(m_RNG, IVRNG::Normal, parameters.cardIVs),
+    m_frame(seed), m_parameters(parameters)
 {
-  // skip over IVs buffered in IVRNG
-  for (uint32_t i = 0; i < 5; ++i)
-    m_RNG.AdvanceBuffer();
+  if (!m_parameters.cardIVs.allSet())
+  {
+    // skip over IVs buffered in IVRNG
+    m_RNG.AdvanceBuffer(5 - parameters.cardIVs.numSet());
+  }
   
-  // skip over 'unused' frames
-  uint32_t  ivSkip = m_isGLAN ? 24 : 22;
-  for (uint32_t i = 0; i < ivSkip; ++i)
+  // skip initial PID frames
+  uint32_t  skippedFrames = seed.GetSkippedPIDFrames(parameters.memoryLinkUsed);
+  SkipFrames(skippedFrames);
+  
+  // skip over 'unused' frames (don't advance initial value RNG)
+  skippedFrames = 20;
+  skippedFrames -= (parameters.cardIVs.numSet() * 2);
+  
+  if ((parameters.cardGender == Gender::FEMALE) ||
+      (parameters.cardGender == Gender::MALE))
+    skippedFrames += 2;
+  
+  if (parameters.cardNature == Nature::ANY)
+    skippedFrames += 2;
+  
+  while (skippedFrames > 0)
   {
     m_RNG.AdvanceBuffer();
     m_IVRNG.NextIVWord();
+    --skippedFrames;
   }
   
   m_frame.number = 0;
   m_frame.hasHiddenAbility = m_parameters.cardAbility == Ability::HIDDEN;
-  
-  if (parameters.startFromLowestFrame)
-  {
-    uint32_t  skippedFrames =
-      seed.GetSkippedPIDFrames(parameters.memoryLinkUsed);
-    SkipFrames(skippedFrames);
-  }
+  if (parameters.cardIVs.allSet())
+    m_frame.ivs = parameters.cardIVs.values;
 }
 
 void WonderCardFrameGenerator::SkipFrames(uint32_t numFrames)
@@ -690,7 +719,9 @@ void WonderCardFrameGenerator::AdvanceFrame()
   m_frame.rngValue = m_initialValueRNG.Next();
   
   m_RNG.AdvanceBuffer();
-  m_frame.ivs = m_IVRNG.NextIVWord();
+  
+  if (!m_parameters.cardIVs.allSet())
+    m_frame.ivs = m_IVRNG.NextIVWord();
   
   // 'unused' frames
   m_RNG.Next();
@@ -705,35 +736,36 @@ void WonderCardFrameGenerator::AdvanceFrame()
   
   switch (m_parameters.cardShininess)
   {
-  case WonderCardShininess::NEVER_SHINY:
+  case Shininess::NEVER_SHINY:
     pid = Gen5PIDRNG::ForceNonShiny(pid, m_parameters.cardTID,
                                     m_parameters.cardSID);
     break;
   
-  case WonderCardShininess::ALWAYS_SHINY:
+  case Shininess::ALWAYS_SHINY:
     pid = Gen5PIDRNG::ForceShiny(pid, m_parameters.cardTID,
                                  m_parameters.cardSID);
     break;
   
-  case WonderCardShininess::MAY_BE_SHINY:
+  case Shininess::MAY_BE_SHINY:
   default:
     break;
   }
   
   if (m_parameters.cardAbility == Ability::ANY)
   {
-    pid = Gen5PIDRNG::FlipAbility(pid);
+    m_frame.pid = Gen5PIDRNG::FlipAbility(pid);
+    m_frame.ability = m_frame.pid.Gen5Ability();
   }
   else if (m_parameters.cardAbility == Ability::HIDDEN)
   {
-    pid = Gen5PIDRNG::ClearAbility(pid);
+    m_frame.pid = Gen5PIDRNG::ClearAbility(pid);
+    m_frame.ability = Ability::HIDDEN;
   }
   else
   {
-    pid = Gen5PIDRNG::ForceAbility(pid, m_parameters.cardAbility);
+    m_frame.pid = Gen5PIDRNG::ForceAbility(pid, m_parameters.cardAbility);
+    m_frame.ability = m_parameters.cardAbility;
   }
-  
-  m_frame.pid = pid;
   
   if (m_parameters.cardNature == Nature::ANY)
   {
@@ -756,7 +788,22 @@ Gen5BreedingFrameGenerator::Gen5BreedingFrameGenerator
     m_RNG(seed.rawSeed),
     m_frame(seed)
 {
+  uint32_t  skippedFrames = seed.GetSkippedPIDFrames(false);
+  
+  SkipFrames(skippedFrames);
+  
   m_frame.number = 0;
+}
+
+void Gen5BreedingFrameGenerator::SkipFrames(uint32_t numFrames)
+{
+  uint32_t  i = 0;
+  while (i++ < numFrames)
+    m_RNG.Next();
+  
+  m_NextSeed = m_RNG.Seed();
+  
+  m_frame.number += numFrames;
 }
 
 void Gen5BreedingFrameGenerator::AdvanceFrame()
@@ -769,19 +816,19 @@ void Gen5BreedingFrameGenerator::AdvanceFrame()
   
   m_frame.rngValue = m_RNG.Next();
   
-  switch (m_parameters.femaleSpecies)
+  switch (m_parameters.speciesParentType)
   {
-  case FemaleParent::OTHER:
-    default:
+  case SpeciesParent::OTHER:
+  default:
     m_frame.species = EggSpecies::OTHER;
     break;
     
-  case FemaleParent::NIDORAN_FEMALE:
+  case SpeciesParent::NIDORAN_FEMALE:
     m_frame.species = (m_frame.rngValue >> 63) ?
       EggSpecies::NIDORAN_M : EggSpecies::NIDORAN_F;
     break;
     
-  case FemaleParent::ILLUMISE:
+  case SpeciesParent::ILLUMISE:
     m_frame.species = (m_frame.rngValue >> 63) ?
       EggSpecies::ILLUMISE : EggSpecies::VOLBEAT;
     break;
@@ -793,15 +840,17 @@ void Gen5BreedingFrameGenerator::AdvanceFrame()
   
   if (m_parameters.usingEverstone)
   {
-    m_frame.everstoneActivated = (m_RNG.Next() >> 63) == 1;
-    if (m_frame.everstoneActivated)
+    if ((m_RNG.Next() >> 63) == 1)
       m_frame.nature = Nature::EVERSTONE;
   }
   
-  m_frame.inheritsHiddenAbility = (((m_RNG.Next() >> 32) * 5) >> 32) >= 2;
+  bool  inheritsHiddenAbility = ((((m_RNG.Next() >> 32) * 5) >> 32) >= 2);
   
   if (m_parameters.usingDitto)
+  {
     m_RNG.Next();
+    inheritsHiddenAbility = false;
+  }
   
   uint32_t  numInherited = 0;
   while (numInherited < 3)
@@ -809,11 +858,11 @@ void Gen5BreedingFrameGenerator::AdvanceFrame()
     uint32_t  ivIndex = ((m_RNG.Next() >> 32) * 6) >> 32;
     uint32_t  parent = m_RNG.Next() >> 63;
     
-    if (m_frame.inheritance[ivIndex] == Gen5BreedingFrame::NotInherited)
+    if (m_frame.inheritance[ivIndex] == Gen5BreedingFrame::Inheritance::None)
     {
       m_frame.inheritance[ivIndex] = (parent == 1) ?
-          Gen5BreedingFrame::ParentX :
-          Gen5BreedingFrame::ParentY;
+          Gen5BreedingFrame::Inheritance::ParentX :
+          Gen5BreedingFrame::Inheritance::ParentY;
       
       ++numInherited;
     }
@@ -829,6 +878,34 @@ void Gen5BreedingFrameGenerator::AdvanceFrame()
       m_frame.pid = Gen5PIDRNG::NextEggPIDWord(m_RNG);
     }
   }
+  
+  if (m_parameters.hasHiddenAbility && inheritsHiddenAbility)
+    m_frame.ability = Ability::HIDDEN;
+  else
+    m_frame.ability = m_frame.pid.Gen5Ability();
+}
+
+
+Gen5EggFrameGenerator::Gen5EggFrameGenerator
+    (const HashedSeed &seed, const Parameters &parameters)
+  : m_parameters(parameters),
+    m_breedingFrameGenerator(seed, parameters),
+    m_frame(seed, parameters.ivFrame, parameters.baseIVs,
+           parameters.xParentIVs, parameters.yParentIVs)
+{}
+
+void Gen5EggFrameGenerator::SkipFrames(uint32_t numFrames)
+{
+  m_breedingFrameGenerator.SkipFrames(numFrames);
+  
+  m_frame.number += numFrames;
+}
+
+void Gen5EggFrameGenerator::AdvanceFrame()
+{
+  m_breedingFrameGenerator.AdvanceFrame();
+  
+  m_frame.SetBreedingFrame(m_breedingFrameGenerator.CurrentFrame());
 }
 
 

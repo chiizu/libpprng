@@ -43,6 +43,8 @@ public:
   
   SeedCountType NumberOfSeeds() const;
   
+  void SkipSeeds(uint64_t numSeeds);
+  
   SeedType Next();
   
 private:
@@ -72,6 +74,32 @@ public:
   SeedCountType NumberOfSeeds() const
   {
     return 256 * 24 * (m_maxDelay - m_minDelay + 1);
+  }
+  
+  void SkipSeeds(uint64_t numSeeds)
+  {
+    uint64_t  numDelays = m_maxDelay - m_minDelay + 1;
+    
+    uint64_t  divisor = 24 * numDelays;
+    uint64_t  skippedDayMonthMinuteSecond = numSeeds / divisor;
+    numSeeds = numSeeds % divisor;
+    
+    divisor = numDelays;
+    
+    m_dayMonthMinuteSecond += (skippedDayMonthMinuteSecond << 24);
+    
+    uint64_t  skippedHours = numSeeds / divisor;
+    uint64_t  skippedDelays = numSeeds % divisor;
+    
+    uint32_t  hourChange = skippedHours % 24;
+    
+    m_delay += skippedDelays;
+    if (m_delay > m_maxDelay)
+      m_delay -= numDelays;
+    
+    m_hour += (hourChange << 16);
+    if (m_hour > 0x00170000)
+      m_hour -= 0x00180000;
   }
   
   SeedType Next()
@@ -124,6 +152,11 @@ public:
     return m_timeSeedGenerator.NumberOfSeeds();
   }
   
+  void SkipSeeds(uint64_t numSeeds)
+  {
+    m_timeSeedGenerator.SkipSeeds(numSeeds);
+  }
+  
   SeedType Next()
   {
     SeedType  result = m_timeSeedGenerator.Next();
@@ -151,33 +184,42 @@ public:
   
   struct Parameters
   {
-    Game::Version             version;
-    DS::Type                  dsType;
+    Game::Color               gameColor;
+    Game::Language            gameLanguage;
+    Console::Type             consoleType;
     uint64_t                  macAddress;
     uint32_t                  timer0Low, timer0High;
     uint32_t                  vcountLow, vcountHigh;
     uint32_t                  vframeLow, vframeHigh;
     boost::posix_time::ptime  fromTime, toTime;
+    uint32_t                  excludedSeasonMask;
     Button::List              heldButtons;
     
     Parameters()
-      : version(Game::Version(0)), macAddress(0), timer0Low(0), timer0High(0),
-        vcountLow(0), vcountHigh(0), vframeLow(0), vframeHigh(0),
-        fromTime(), toTime(), heldButtons()
+      : gameColor(Game::Color(0)), gameLanguage(Game::Language(0)),
+        consoleType(Console::Type(0)), macAddress(0),
+        timer0Low(0), timer0High(0), vcountLow(0), vcountHigh(0),
+        vframeLow(0), vframeHigh(0), fromTime(), toTime(),
+        excludedSeasonMask(0), heldButtons()
     {}
     
     HashedSeed::Parameters ToInitialSeedParameters() const;
     
+    uint32_t NumberOfSeconds() const;
+    void AdvanceSeconds(uint32_t numSeconds);
+    
     SeedCountType NumberOfSeeds() const;
   };
   
-  enum { SeedsPerChunk = 50000 };
+  enum { SeedsPerChunk = 10000 };
   
   HashedSeedGenerator(const HashedSeedGenerator::Parameters &parameters);
   
   HashedSeedGenerator(const HashedSeedGenerator &other);
   
   SeedCountType NumberOfSeeds() const;
+  
+  void SkipSeeds(uint64_t numSeeds);
   
   SeedType Next();
   

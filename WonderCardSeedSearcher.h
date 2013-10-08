@@ -42,11 +42,11 @@ public:
     SearchCriteria::IVCriteria            ivs;
     SearchCriteria::PIDCriteria           pid;
     bool                                  shinyOnly;
-    SearchCriteria::FrameRange            frame;
+    SearchCriteria::FrameRange            frameRange;
     
     Criteria()
       : SearchCriteria(), seedParameters(), frameParameters(),
-        ivs(), pid(), frame()
+        ivs(), pid(), frameRange()
     {}
     
     uint64_t ExpectedNumberOfResults() const;
@@ -58,7 +58,9 @@ public:
   WonderCardSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              const SearchRunner::ProgressCallback &progressHandler);
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

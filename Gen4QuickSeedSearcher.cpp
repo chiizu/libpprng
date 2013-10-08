@@ -189,7 +189,7 @@ uint64_t Gen4QuickSeedSearcher::Criteria::ExpectedNumberOfResults()
 
 void Gen4QuickSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   const SearchRunner::ProgressCallback &progressHandler)
+   SearchRunner::StatusHandler &statusHandler)
 {
   Gen34IVSeedGenerator  seedGenerator(criteria.ivs.min, criteria.ivs.max);
   SeedSearcher          seedSearcher;
@@ -199,8 +199,8 @@ void Gen4QuickSeedSearcher::Search
   
   SearchRunner          searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker,
-                  seedChecker, progressHandler);
+  searcher.Search(seedGenerator, seedSearcher, frameChecker, seedChecker,
+                  statusHandler);
 }
 
 }
