@@ -58,35 +58,93 @@ struct SearchCriteria
       
       return (c == 0) ? 25 : c;
     }
+    
+    bool CheckAbility(Ability::Type a) const
+    {
+      return (ability == Ability::ANY) || (a == ability);
+    }
+    
+    bool CheckGender(const PID &pid) const
+    {
+      return Gender::GenderValueMatches(pid.GenderValue(), gender, genderRatio);
+    }
   };
   
   struct IVCriteria
   {
+    IVPattern::Type  pattern;
+    
     IVs       min, max;
     uint32_t  hiddenTypeMask;
     uint32_t  minHiddenPower;
     bool      isRoamer;
     
     IVCriteria()
-      : min(), max(), hiddenTypeMask(0), minHiddenPower(30), isRoamer(false)
+      : pattern(IVPattern::CUSTOM), min(), max(),
+        hiddenTypeMask(0), minHiddenPower(30), isRoamer(false)
     {}
     
-    IVPattern::Type GetPattern() const
+    void DeterminePattern()
     {
-      return IVPattern::Get(min, max, (hiddenTypeMask != 0), minHiddenPower);
+      pattern = IVPattern::Get(min, max, (hiddenTypeMask != 0), minHiddenPower);
+      
+      switch (pattern)
+      {
+      case IVPattern::CUSTOM: default:
+        break;
+        
+      case IVPattern::HEX_FLAWLESS:
+        mask = IVs::Perfect.word; test = IVs::Perfect.word;
+        break;
+        
+      case IVPattern::PHYSICAL_FLAWLESS:
+        mask = IVs::PhysPerfect.word; test = IVs::PhysPerfect.word;
+        break;
+        
+      case IVPattern::SPECIAL_FLAWLESS:
+        mask = IVs::SpecPerfect.word; test = IVs::SpecPerfect.word;
+        break;
+        
+      case IVPattern::SPECIAL_HIDDEN_POWER_FLAWLESS:
+        mask = IVs::HpPerfectLow.word; test = IVs::HpPerfectLow.word;
+        break;
+        
+      case IVPattern::HEX_FLAWLESS_TRICK:
+        mask = IVs::Perfect.word; test = IVs::PerfectTrick.word;
+        break;
+        
+      case IVPattern::PHYSICAL_FLAWLESS_TRICK:
+        mask = IVs::PhysPerfect.word; test = IVs::PhysPerfectTrick.word;
+        break;
+        
+      case IVPattern::SPECIAL_FLAWLESS_TRICK:
+        mask = IVs::SpecPerfect.word; test = IVs::SpecPerfectTrick.word;
+        break;
+        
+      case IVPattern::SPECIAL_HIDDEN_POWER_FLAWLESS_TRICK:
+        mask = IVs::HpPerfectLow.word; test = IVs::HpPerfectTrickLow.word;
+        break;
+      }
+    }
+    
+    bool CheckPattern(const IVs &ivs) const
+    {
+      return (ivs.word & mask) == test;
     }
     
     bool CheckIVs(const IVs &ivs) const
     {
-      return ivs.betterThanOrEqual(min) &&
+      return ((pattern == IVPattern::CUSTOM) ||
+              CheckPattern(ivs)) &&
+             ivs.betterThanOrEqual(min) &&
              (max.isMax() || ivs.worseThanOrEqual(max));
     }
     
-    bool CheckHiddenPower(Element::Type hpType, uint32_t hpPower) const
+    bool CheckHiddenPower(const IVs &ivs) const
     {
       return (hiddenTypeMask == 0) ||
-             ((((0x1 << (hpType - 1)) & hiddenTypeMask) != 0) &&
-              (hpPower >= minHiddenPower));
+             ((((0x1 << (ivs.HiddenType() - 1)) & hiddenTypeMask) != 0) &&
+              (ivs.HiddenPower() >= minHiddenPower));
     }
     
     uint32_t NumHiddenPowers() const
@@ -100,6 +158,9 @@ struct SearchCriteria
       
       return (c == 0) ? 16 : c;
     }
+    
+  private:
+    uint32_t  mask, test;
   };
   
   struct NumberRange

@@ -50,7 +50,7 @@ struct FrameChecker
 
   bool CheckHiddenPower(const IVs &ivs) const
   {
-    return m_criteria.ivs.CheckHiddenPower(ivs.HiddenType(), ivs.HiddenPower());
+    return m_criteria.ivs.CheckHiddenPower(ivs);
   }
   
   const HashedSeedSearcher::Criteria  &m_criteria;
@@ -189,12 +189,11 @@ void HashedSeedSearcher::Search
   FrameChecker         frameChecker(criteria);
   SearchRunner         searcher;
   
-  IVPattern::Type  ivPattern = criteria.ivs.GetPattern();
-  bool             isBlack2White2 =
+  bool      isBlack2White2 =
     Game::IsBlack2White2(criteria.seedParameters.gameColor);
-  uint32_t         offset = isBlack2White2 ? 2 :0;
+  uint32_t  offset = isBlack2White2 ? 2 :0;
   
-  if ((ivPattern == IVPattern::CUSTOM) ||
+  if ((criteria.ivs.pattern == IVPattern::CUSTOM) ||
       (criteria.ivFrame.min > (IVSeedMapMaxFrame - offset)) ||
       (criteria.ivFrame.max > (IVSeedMapMaxFrame - offset)) ||
       (criteria.ivs.isRoamer && isBlack2White2))
@@ -217,7 +216,7 @@ void HashedSeedSearcher::Search
   else if ((criteria.ivFrame.min > (IVSeedHashMaxFrame - offset)) ||
            (criteria.ivFrame.max > (IVSeedHashMaxFrame - offset)))
   {
-    SeedMapSearcher  seedSearcher(GetIVSeedMap(ivPattern),
+    SeedMapSearcher  seedSearcher(GetIVSeedMap(criteria.ivs.pattern),
                                   criteria.ivFrame,
                                   isBlack2White2);
     
@@ -231,7 +230,7 @@ void HashedSeedSearcher::Search
   }
   else
   {
-    SeedHashSearcher  seedSearcher(GetIVSeedHash(ivPattern,
+    SeedHashSearcher  seedSearcher(GetIVSeedHash(criteria.ivs.pattern,
                                                  criteria.ivs.isRoamer),
                                    criteria.ivFrame,
                                    isBlack2White2);

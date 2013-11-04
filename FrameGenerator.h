@@ -28,6 +28,7 @@
 #include "IVRNG.h"
 #include "PIDRNG.h"
 #include "RNGWrappers.h"
+#include "SearchCriteria.h"
 
 namespace pprng
 {
@@ -698,6 +699,8 @@ public:
   void SkipFrames(uint32_t numFrames);
   
   void AdvanceFrame();
+  bool AdvanceFrameWithCriteria(const SearchCriteria::IVCriteria &ivCriteria,
+                                const SearchCriteria::PIDCriteria &pidCriteria);
   
   const Frame& CurrentFrame() { return m_frame; }
   

@@ -36,12 +36,12 @@ struct FrameChecker
   
   bool operator()(const WonderCardFrame &frame) const
   {
-    return CheckShiny(frame.pid) && CheckNature(frame.nature) &&
+    return m_criteria.ivs.CheckIVs(frame.ivs) &&
+           m_criteria.ivs.CheckHiddenPower(frame.ivs) &&
+           CheckShiny(frame.pid) &&
+           CheckNature(frame.nature) &&
            CheckAbility(frame.ability) &&
-           CheckGender(frame.pid.GenderValue()) &&
-           m_criteria.ivs.CheckIVs(frame.ivs) &&
-           m_criteria.ivs.CheckHiddenPower(frame.ivs.HiddenType(),
-                                           frame.ivs.HiddenPower());
+           CheckGender(frame.pid);
   }
   
   bool CheckShiny(PID pid) const
@@ -62,16 +62,13 @@ struct FrameChecker
   bool CheckAbility(Ability::Type ability) const
   {
     return (m_criteria.frameParameters.cardAbility != Ability::ANY) ||
-           (m_criteria.pid.ability == Ability::ANY) ||
-           (m_criteria.pid.ability == ability);
+           m_criteria.pid.CheckAbility(ability);
   }
   
-  bool CheckGender(uint32_t genderValue) const
+  bool CheckGender(const PID &pid) const
   {
     return (m_criteria.frameParameters.cardGender != Gender::ANY) ||
-           Gender::GenderValueMatches(genderValue,
-                                      m_criteria.pid.gender,
-                                      m_criteria.pid.genderRatio);
+           m_criteria.pid.CheckGender(pid);
   }
   
   const WonderCardSeedSearcher::Criteria  &m_criteria;
@@ -91,6 +88,39 @@ struct FrameGeneratorFactory
   }
   
   const WonderCardSeedSearcher::Criteria  &m_criteria;
+};
+
+struct AggressiveSeedSearcher
+{
+  typedef WonderCardFrame  ResultType;
+  
+  AggressiveSeedSearcher(const WonderCardFrameGenerator::Parameters &p,
+                         const SearchCriteria::FrameRange &frameRange,
+                         const SearchCriteria::IVCriteria &ivCriteria,
+                         const SearchCriteria::PIDCriteria &pidCriteria)
+    : m_frameParameters(p), m_frameRange(frameRange), m_ivCriteria(ivCriteria),
+      m_pidCriteria(pidCriteria)
+  {}
+  
+  void Search(const HashedSeed &seed, const FrameChecker &frameChecker,
+              const WonderCardSeedSearcher::ResultCallback &resultHandler)
+  {
+    WonderCardFrameGenerator  generator(seed, m_frameParameters);
+    
+    generator.SkipFrames(m_frameRange.min - 1);
+    
+    while (generator.CurrentFrame().number < m_frameRange.max)
+    {
+      if (generator.AdvanceFrameWithCriteria(m_ivCriteria, m_pidCriteria) &&
+          frameChecker(generator.CurrentFrame()))
+        resultHandler(generator.CurrentFrame());
+    }
+  }
+  
+  const WonderCardFrameGenerator::Parameters  &m_frameParameters;
+  const SearchCriteria::FrameRange            &m_frameRange;
+  const SearchCriteria::IVCriteria            &m_ivCriteria;
+  const SearchCriteria::PIDCriteria           &m_pidCriteria;
 };
 
 }
@@ -140,11 +170,17 @@ void WonderCardSeedSearcher::Search
    const std::vector<uint64_t> &startingSeeds)
 {
   HashedSeedGenerator         seedGenerator(criteria.seedParameters);
+  
+#if 0
   FrameGeneratorFactory       frameGeneratorFactory(criteria);
   
   SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGeneratorFactory,
                                                          criteria.frameRange);
-  
+#else
+  AggressiveSeedSearcher  seedSearcher(criteria.frameParameters,
+                                       criteria.frameRange, criteria.ivs,
+                                       criteria.pid);
+#endif
   FrameChecker                frameChecker(criteria);
   
   SearchRunner                searcher;

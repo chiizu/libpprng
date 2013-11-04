@@ -696,7 +696,6 @@ WonderCardFrameGenerator::WonderCardFrameGenerator(const HashedSeed &seed,
   }
   
   m_frame.number = 0;
-  m_frame.hasHiddenAbility = m_parameters.cardAbility == Ability::HIDDEN;
   if (parameters.cardIVs.allSet())
     m_frame.ivs = parameters.cardIVs.values;
 }
@@ -778,6 +777,90 @@ void WonderCardFrameGenerator::AdvanceFrame()
   {
     m_frame.nature = m_parameters.cardNature;
   }
+}
+
+
+bool WonderCardFrameGenerator::AdvanceFrameWithCriteria
+  (const SearchCriteria::IVCriteria &ivCriteria,
+   const SearchCriteria::PIDCriteria &pidCriteria)
+{
+  ++m_frame.number;
+  m_frame.rngValue = m_initialValueRNG.Next();
+  
+  m_RNG.AdvanceBuffer();
+  
+  if (!m_parameters.cardIVs.allSet())
+    m_frame.ivs = m_IVRNG.NextIVWord();
+  
+  if (!ivCriteria.CheckIVs(m_frame.ivs) ||
+      !ivCriteria.CheckHiddenPower(m_frame.ivs))
+    return false;
+  
+  // 'unused' frames
+  m_RNG.Next();
+  m_RNG.Next();
+  
+  uint32_t  pid = Gen5PIDRNG::NextRawPIDWord(m_RNG);
+  if (m_parameters.cardGender != Gender::ANY)
+  {
+    pid = Gen5PIDRNG::ForceGender(pid, m_parameters.cardGender,
+                                  m_parameters.cardGenderRatio, m_RNG);
+  }
+  
+  if (!pidCriteria.CheckGender(PID(pid)))
+    return false;
+  
+  switch (m_parameters.cardShininess)
+  {
+  case Shininess::NEVER_SHINY:
+    pid = Gen5PIDRNG::ForceNonShiny(pid, m_parameters.cardTID,
+                                    m_parameters.cardSID);
+    break;
+  
+  case Shininess::ALWAYS_SHINY:
+    pid = Gen5PIDRNG::ForceShiny(pid, m_parameters.cardTID,
+                                 m_parameters.cardSID);
+    break;
+  
+  case Shininess::MAY_BE_SHINY:
+  default:
+    break;
+  }
+  
+  if (m_parameters.cardAbility == Ability::ANY)
+  {
+    m_frame.pid = Gen5PIDRNG::FlipAbility(pid);
+    m_frame.ability = m_frame.pid.Gen5Ability();
+  }
+  else if (m_parameters.cardAbility == Ability::HIDDEN)
+  {
+    m_frame.pid = Gen5PIDRNG::ClearAbility(pid);
+    m_frame.ability = Ability::HIDDEN;
+  }
+  else
+  {
+    m_frame.pid = Gen5PIDRNG::ForceAbility(pid, m_parameters.cardAbility);
+    m_frame.ability = m_parameters.cardAbility;
+  }
+  
+  if (!pidCriteria.CheckAbility(m_frame.ability))
+    return false;
+  
+  if (m_parameters.cardNature == Nature::ANY)
+  {
+    // skip 'unused' frames
+    m_RNG.Next();
+    
+    m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+    
+    return pidCriteria.CheckNature(m_frame.nature);
+  }
+  else
+  {
+    m_frame.nature = m_parameters.cardNature;
+  }
+  
+  return true;
 }
 
 

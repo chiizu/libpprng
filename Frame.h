@@ -25,6 +25,7 @@
 #include "TimeSeed.h"
 #include "CGearSeed.h"
 #include "HashedSeed.h"
+#include "SearchCriteria.h"
 
 namespace pprng
 {
@@ -202,7 +203,6 @@ struct WonderCardFrame
   PID            pid;
   Ability::Type  ability;
   Nature::Type   nature;
-  bool           hasHiddenAbility;
   IVs            ivs;
 };
 

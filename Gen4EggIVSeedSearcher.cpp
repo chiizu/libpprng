@@ -180,9 +180,7 @@ struct FrameResultHandler
   bool CheckHiddenPower(const OptionalIVs &oivs) const
   {
     return (m_criteria.ivs.hiddenTypeMask == 0) ||
-           (oivs.allSet() &&
-            m_criteria.ivs.CheckHiddenPower(oivs.values.HiddenType(),
-                                            oivs.values.HiddenPower()));
+           (oivs.allSet() && m_criteria.ivs.CheckHiddenPower(oivs.values));
   }
   
   const Gen4EggIVSeedSearcher::Criteria        &m_criteria;

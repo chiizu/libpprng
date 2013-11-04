@@ -102,44 +102,17 @@ struct FrameChecker
   
   bool operator()(const Gen34Frame &frame) const
   {
-    return CheckShiny(frame.pid) && CheckNature(frame.pid) &&
-           CheckAbility(frame.pid) && CheckGender(frame.pid) &&
-           CheckIVs(frame.ivs) && CheckHiddenPower(frame.ivs);
+    return CheckShiny(frame.pid) &&
+           m_criteria.pid.CheckNature(frame.pid.Gen34Nature()) &&
+           m_criteria.pid.CheckAbility(frame.pid.Gen34Ability()) &&
+           m_criteria.pid.CheckGender(frame.pid) &&
+           m_criteria.ivs.CheckIVs(frame.ivs) &&
+           m_criteria.ivs.CheckHiddenPower(frame.ivs);
   }
   
   bool CheckShiny(const PID &pid) const
   {
     return !m_criteria.shinyOnly || pid.IsShiny(m_criteria.tid, m_criteria.sid);
-  }
-  
-  bool CheckNature(const PID &pid) const
-  {
-    return m_criteria.pid.CheckNature(pid.Gen34Nature());
-  }
-  
-  bool CheckAbility(const PID &pid) const
-  {
-    return (m_criteria.pid.ability == Ability::ANY) ||
-           (m_criteria.pid.ability == pid.Gen34Ability());
-  }
-  
-  bool CheckGender(const PID &pid) const
-  {
-    return Gender::GenderValueMatches(pid.GenderValue(),
-                                      m_criteria.pid.gender,
-                                      m_criteria.pid.genderRatio);
-  }
-  
-  bool CheckIVs(const IVs &ivs) const
-  {
-    return ivs.betterThanOrEqual(m_criteria.ivs.min) &&
-           (m_criteria.ivs.max.isMax() ||
-            ivs.worseThanOrEqual(m_criteria.ivs.max));
-  }
-
-  bool CheckHiddenPower(const IVs &ivs) const
-  {
-    return m_criteria.ivs.CheckHiddenPower(ivs.HiddenType(), ivs.HiddenPower());
   }
   
   const Gen4QuickSeedSearcher::Criteria  &m_criteria;

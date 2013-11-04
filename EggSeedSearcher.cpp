@@ -266,8 +266,7 @@ struct IVFrameResultHandler
   {
     return (m_criteria.ivs.hiddenTypeMask == 0) ||
            (oivs.allSet() &&
-            m_criteria.ivs.CheckHiddenPower(oivs.values.HiddenType(),
-                                            oivs.values.HiddenPower()));
+            m_criteria.ivs.CheckHiddenPower(oivs.values));
   }
   
   const EggSeedSearcher::Criteria        &m_criteria;
@@ -547,7 +546,7 @@ void EggSeedSearcher::Search
   IVFrameResultHandler  ivFrameResultHandler(criteria, resultHandler);
   SearchRunner          searcher;
   
-  if ((criteria.ivs.GetPattern() == IVPattern::CUSTOM) ||
+  if ((criteria.ivs.pattern == IVPattern::CUSTOM) ||
       Game::IsBlack2White2(criteria.seedParameters.gameColor) ||
       (criteria.ivFrame.min != 8) || (criteria.ivFrame.max != 8) ||
       (LoadSeedCache() != LOADED))

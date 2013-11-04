@@ -38,25 +38,9 @@ struct FrameChecker
   
   bool operator()(const DreamRadarFrame &frame) const
   {
-    return CheckNature(frame.nature) && CheckIVs(frame.ivs) &&
-           CheckHiddenPower(frame.ivs);
-  }
-  
-  bool CheckNature(Nature::Type nature) const
-  {
-    return m_criteria.pid.CheckNature(nature);
-  }
-  
-  bool CheckIVs(const IVs &ivs) const
-  {
-    return ivs.betterThanOrEqual(m_criteria.ivs.min) &&
-           (m_criteria.ivs.max.isMax() ||
-            ivs.worseThanOrEqual(m_criteria.ivs.max));
-  }
-
-  bool CheckHiddenPower(const IVs &ivs) const
-  {
-    return m_criteria.ivs.CheckHiddenPower(ivs.HiddenType(), ivs.HiddenPower());
+    return m_criteria.pid.CheckNature(frame.nature) &&
+           m_criteria.ivs.CheckIVs(frame.ivs) &&
+           m_criteria.ivs.CheckHiddenPower(frame.ivs);
   }
   
   const DreamRadarSeedSearcher::Criteria  &m_criteria;
@@ -95,14 +79,14 @@ struct SeedMapSearcher
       ivFrame.ivs = i->second.ivWord;
       
       if (((ivFrame.number & 0x1) == (m_lowIVFrame & 0x1)) &&
-          frameChecker.CheckIVs(ivFrame.ivs) &&
-          frameChecker.CheckHiddenPower(ivFrame.ivs))
+          frameChecker.m_criteria.ivs.CheckIVs(ivFrame.ivs) &&
+          frameChecker.m_criteria.ivs.CheckHiddenPower(ivFrame.ivs))
       {
         DreamRadarFrame  result =
           DreamRadarFrameGenerator::FrameFromIVFrame
             (ivFrame, m_criteria.frameParameters);
         
-        if (frameChecker.CheckNature(result.nature))
+        if (frameChecker.m_criteria.pid.CheckNature(result.nature))
           resultHandler(result);
       }
       
@@ -160,20 +144,18 @@ void DreamRadarSeedSearcher::Search
    SearchRunner::StatusHandler &searchStatusHandler,
    const std::vector<uint64_t> &startingSeeds)
 {
-  IVPattern::Type  ivPattern = criteria.ivs.GetPattern();
-  
   HashedSeedGenerator         seedGenerator(criteria.seedParameters);
   FrameGeneratorFactory       frameGeneratorFactory(criteria);
   FrameChecker                frameChecker(criteria);
   SearchRunner                searcher;
   
-  if ((ivPattern != IVPattern::CUSTOM) &&
+  if ((criteria.ivs.pattern != IVPattern::CUSTOM) &&
       (criteria.frameParameters.GetBaseIVFrameNumber(criteria.frame.min) <=
         IVSeedMapMaxFrame) &&
       (criteria.frameParameters.GetBaseIVFrameNumber(criteria.frame.max) <=
         IVSeedMapMaxFrame))
   {
-    SeedMapSearcher  seedSearcher(GetIVSeedMap(ivPattern), criteria);
+    SeedMapSearcher  seedSearcher(GetIVSeedMap(criteria.ivs.pattern), criteria);
     
     if (startingSeeds.size() > 0)
       searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,

@@ -79,19 +79,8 @@ struct FrameChecker
   
   bool operator()(const CGearIVFrame &frame) const
   {
-    return CheckIVs(frame.ivs) && CheckHiddenPower(frame.ivs);
-  }
-  
-  bool CheckIVs(const IVs &ivs) const
-  {
-    return ivs.betterThanOrEqual(m_criteria.ivs.min) &&
-           (m_criteria.ivs.max.isMax() ||
-            ivs.worseThanOrEqual(m_criteria.ivs.max));
-  }
-
-  bool CheckHiddenPower(const IVs &ivs) const
-  {
-    return m_criteria.ivs.CheckHiddenPower(ivs.HiddenType(), ivs.HiddenPower());
+    return m_criteria.ivs.CheckIVs(frame.ivs) &&
+           m_criteria.ivs.CheckHiddenPower(frame.ivs);
   }
   
   const CGearSeedSearcher::Criteria  &m_criteria;
@@ -203,9 +192,7 @@ void CGearSeedSearcher::Search
   FrameChecker  frameChecker(criteria);
   SearchRunner  searcher;
   
-  IVPattern::Type  ivPattern = criteria.ivs.GetPattern();
-  
-  if ((ivPattern == IVPattern::CUSTOM) ||
+  if ((criteria.ivs.pattern == IVPattern::CUSTOM) ||
       ((criteria.frameRange.min + 2) > IVSeedMapMaxFrame) ||
       ((criteria.frameRange.max + 2) > IVSeedMapMaxFrame) ||
       criteria.ivs.isRoamer)
@@ -227,7 +214,8 @@ void CGearSeedSearcher::Search
   else
   {
     FastSearchSeedGenerator  seedGenerator;
-    FastSeedSearcher         seedSearcher(GetIVSeedMap(ivPattern), criteria);
+    FastSeedSearcher         seedSearcher(GetIVSeedMap(criteria.ivs.pattern),
+                                          criteria);
     
     searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
                     statusHandler);
