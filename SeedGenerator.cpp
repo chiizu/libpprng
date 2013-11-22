@@ -35,12 +35,15 @@ namespace
 
 static bool ShouldIterateHpAtkDef(IVs minIVs, IVs maxIVs)
 {
-  IVs tempMin(minIVs.word & 0x7fff0000);
-  IVs tempMax(maxIVs.word & 0x7fff0000);
+  IVs tempMin, tempMax;
+  
+  tempMin.SetFromGameDataWord(minIVs.GameDataWord() & 0x7fff0000);
+  tempMax.SetFromGameDataWord(maxIVs.GameDataWord() & 0x7fff0000);
+  
   uint32_t  numCombosHi = IVs::CalculateNumberOfCombinations(tempMin, tempMax);
   
-  tempMin = minIVs.word & 0x00007fff;
-  tempMax = maxIVs.word & 0x00007fff;
+  tempMin.SetFromGameDataWord(minIVs.GameDataWord() & 0x00007fff);
+  tempMax.SetFromGameDataWord(maxIVs.GameDataWord() & 0x00007fff);
   
   uint32_t  numCombosLo = IVs::CalculateNumberOfCombinations(tempMin, tempMax);
   
@@ -83,9 +86,12 @@ Gen34IVSeedGenerator::SeedCountType Gen34IVSeedGenerator::NumberOfSeeds() const
 {
   uint32_t  mask = m_iteratingHpAtDef ? 0x00007fff : 0x7fff0000;
   
-  return IVs::CalculateNumberOfCombinations(IVs(m_minIVs.word & mask),
-                                            IVs(m_maxIVs.word & mask)) *
-         (0x1ffff + 1);
+  IVs  halfMin, halfMax;
+  
+  halfMin.SetFromGameDataWord(m_minIVs.GameDataWord() & mask);
+  halfMax.SetFromGameDataWord(m_maxIVs.GameDataWord() & mask);
+  
+  return IVs::CalculateNumberOfCombinations(halfMin, halfMax) * (0x1ffff + 1);
 }
 
 void Gen34IVSeedGenerator::SkipSeeds(uint64_t numSeeds)

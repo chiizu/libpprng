@@ -385,7 +385,9 @@ struct Gender
     THREE_FOURTHS_FEMALE_THRESHOLD = 191,
     SEVEN_EIGHTHS_FEMALE_THRESHOLD = 223,
     FEMALE_ONLY_THRESHOLD = 254,
-    GENDERLESS_THRESHOLD = 255
+    GENDERLESS_THRESHOLD = 255,
+    
+    FIXED_GENDER_FORCED_THRESHOLD = 8
   };
   
   static Threshold GetThreshold(Ratio r)
@@ -422,29 +424,31 @@ struct Gender
   
   static uint32_t MakeGenderValue(Type t, Ratio r, uint64_t randomValue)
   {
+    Threshold  th;
+    
     switch (r)
     {
     case FEMALE_ONLY:
-      return ((randomValue * 0x8) >> 32) + 1;
-      
     case MALE_ONLY:
-      return ((randomValue * 0xF6) >> 32) + 8;
+      th = FIXED_GENDER_FORCED_THRESHOLD;
+      break;
       
     default:
-      Threshold  th = GetThreshold(r);
+      th = GetThreshold(r);
+      break;
+    }
+    
+    switch (t)
+    {
+    case FEMALE:
+      return ((randomValue * (th - 1)) >> 32) + 1;
       
-      switch (t)
-      {
-      case FEMALE:
-        return ((randomValue * (th - 1)) >> 32) + 1;
-        
-      case MALE:
-        return ((randomValue * (0xFE - th)) >> 32) + th;
-        
-      case GENDERLESS:
-      default:
-        return (randomValue >> 32);
-      }
+    case MALE:
+      return ((randomValue * (0xFE - th)) >> 32) + th;
+      
+    case GENDERLESS:
+    default:
+      return (randomValue >> 32);
     }
   }
 };
@@ -559,16 +563,14 @@ struct IndividualValues
     NUM_IVS
   };
   
-  // bit shift amounts for packing / unpacking ivs from 32 bit word
-  // in Gen 3 / 4 format (empty-bit, sd, sa, sp, empty-bit, df, at, hp)
   enum Shift
   {
-    HP_SHIFT = 0,
-    AT_SHIFT = 5,
-    DF_SHIFT = 10,
-    SA_SHIFT = 21,
-    SD_SHIFT = 26,
-    SP_SHIFT = 16
+    HP_SHIFT = HP * 5,
+    AT_SHIFT = AT * 5,
+    DF_SHIFT = DF * 5,
+    SA_SHIFT = SA * 5,
+    SD_SHIFT = SD * 5,
+    SP_SHIFT = SP * 5
   };
   
   static const Shift  IVShift[NUM_IVS];
@@ -602,32 +604,25 @@ struct IndividualValues
   static const IndividualValues  HpPerfectTrickHigh;
   
   
-  IndividualValues() : word(0) {}
+  IndividualValues() : ivWord(0) {}
   
   // this does not check value ranges - assumes user passes valid IV values
   IndividualValues(uint32_t hp, uint32_t at, uint32_t df,
                    uint32_t sa, uint32_t sd, uint32_t sp)
-    : word((hp << HP_SHIFT) | (at << AT_SHIFT) | (df << DF_SHIFT) |
-           (sa << SA_SHIFT) | (sd << SD_SHIFT) | (sp << SP_SHIFT))
+    : ivWord((hp << HP_SHIFT) | (at << AT_SHIFT) | (df << DF_SHIFT) |
+             (sa << SA_SHIFT) | (sd << SD_SHIFT) | (sp << SP_SHIFT))
   {}
   
-  IndividualValues(const IndividualValues &ivs) : word(ivs.word) {}
-  explicit IndividualValues(uint32_t ivWord) : word(ivWord & ALL_IVS_MASK) {}
+  IndividualValues(const IndividualValues &ivs) : ivWord(ivs.ivWord) {}
   
   IndividualValues& operator=(const IndividualValues &ivs)
   {
-    word = ivs.word;
+    ivWord = ivs.ivWord;
     return *this;
   }
   
-  IndividualValues& operator=(uint32_t ivWord)
-  {
-    word = ivWord & ALL_IVS_MASK;
-    return *this;
-  }
-  
-  bool isMin() const { return word == 0x0; }
-  bool isMax() const { return word == 0x7fff7fff; }
+  bool isMin() const { return ivWord == 0x0; }
+  bool isMax() const { return ivWord == ALL_IVS_MASK; }
   
   // don't use comparison operators because they will break the rules
   // like if operator< is false, mathematically operator>= should be true
@@ -644,29 +639,29 @@ struct IndividualValues
   bool worseThan(const OptionalIVs &oivs) const;
   bool worseThanOrEqual(const OptionalIVs &oivs) const;
   
-  uint32_t hp() const { return (word & HP_MASK) >> HP_SHIFT; }
+  uint32_t hp() const { return (ivWord & HP_MASK) >> HP_SHIFT; }
   void hp(uint32_t iv)
-  { word = (word & ~HP_MASK) | ((iv << HP_SHIFT) & HP_MASK); }
+  { ivWord = (ivWord & ~HP_MASK) | ((iv << HP_SHIFT) & HP_MASK); }
   
-  uint32_t at() const { return (word & AT_MASK) >> AT_SHIFT; }
+  uint32_t at() const { return (ivWord & AT_MASK) >> AT_SHIFT; }
   void at(uint32_t iv)
-  { word = (word & ~AT_MASK) | ((iv << AT_SHIFT) & AT_MASK); }
+  { ivWord = (ivWord & ~AT_MASK) | ((iv << AT_SHIFT) & AT_MASK); }
   
-  uint32_t df() const { return (word & DF_MASK) >> DF_SHIFT; }
+  uint32_t df() const { return (ivWord & DF_MASK) >> DF_SHIFT; }
   void df(uint32_t iv)
-  { word = (word & ~DF_MASK) | ((iv << DF_SHIFT) & DF_MASK); }
+  { ivWord = (ivWord & ~DF_MASK) | ((iv << DF_SHIFT) & DF_MASK); }
   
-  uint32_t sa() const { return (word & SA_MASK) >> SA_SHIFT; }
+  uint32_t sa() const { return (ivWord & SA_MASK) >> SA_SHIFT; }
   void sa(uint32_t iv)
-  { word = (word & ~SA_MASK) | ((iv << SA_SHIFT) & SA_MASK); }
+  { ivWord = (ivWord & ~SA_MASK) | ((iv << SA_SHIFT) & SA_MASK); }
   
-  uint32_t sd() const { return (word & SD_MASK) >> SD_SHIFT; }
+  uint32_t sd() const { return (ivWord & SD_MASK) >> SD_SHIFT; }
   void sd(uint32_t iv)
-  { word = (word & ~SD_MASK) | ((iv << SD_SHIFT) & SD_MASK); }
+  { ivWord = (ivWord & ~SD_MASK) | ((iv << SD_SHIFT) & SD_MASK); }
   
-  uint32_t sp() const { return (word & SP_MASK) >> SP_SHIFT; }
+  uint32_t sp() const { return (ivWord & SP_MASK) >> SP_SHIFT; }
   void sp(uint32_t iv)
-  { word = (word & ~SP_MASK) | ((iv << SP_SHIFT) & SP_MASK); }
+  { ivWord = (ivWord & ~SP_MASK) | ((iv << SP_SHIFT) & SP_MASK); }
   
   
   class BadIVIndexException : public Exception
@@ -679,58 +674,35 @@ struct IndividualValues
   {
     if ((i < HP) || (i > SP)) throw BadIVIndexException(i);
     
-    return (word >> IVShift[i]) & IV_MASK;
+    return (ivWord >> IVShift[i]) & IV_MASK;
   }
   
   void setIV(int i, uint32_t iv) throw (BadIVIndexException)
   {
     if ((i < HP) || (i > SP)) throw BadIVIndexException(i);
     
-    word = (word & ~(IV_MASK << IVShift[i])) | ((iv & IV_MASK) << IVShift[i]);
+    ivWord = (ivWord & ~(IV_MASK << IVShift[i])) |
+             ((iv & IV_MASK) << IVShift[i]);
+  }
+  
+  uint32_t GameDataWord() const
+  {
+    return (ivWord & 0x7fff) | ((ivWord & 0x01ff8000) << 6) |
+    ((ivWord & 0x3e000000) >> 9);
+  }
+  
+  void SetFromGameDataWord(uint32_t gameDataWord)
+  {
+    ivWord = (gameDataWord & 0x7fff) | ((gameDataWord & 0x7fe00000) >> 6) |
+    ((gameDataWord & 0x001f0000) << 9);
   }
   
   uint32_t Sum() const { return hp() + at() + df() + sa() + sd() + sp(); }
   
-  void ShiftDownNormal(uint32_t iv)
-  {
-    word = ((word & (AT_MASK | DF_MASK)) >> (AT_SHIFT - HP_SHIFT)) |
-           ((word & SA_MASK) >> (SA_SHIFT - DF_SHIFT)) |
-           ((word & SD_MASK) >> (SD_SHIFT - SA_SHIFT)) |
-           ((word & SP_MASK) << (SD_SHIFT - SP_SHIFT)) |
-           ((iv & IV_MASK) << SP_SHIFT);
-  }
-  
-  void ShiftUpNormal(uint32_t iv)
-  {
-    word = ((iv & IV_MASK) << HP_SHIFT) |
-           ((word & (HP_MASK | AT_MASK)) << (AT_SHIFT - HP_SHIFT)) |
-           ((word & DF_MASK) << (SA_SHIFT - DF_SHIFT)) |
-           ((word & SA_MASK) << (SD_SHIFT - SA_SHIFT)) |
-           ((word & SD_MASK) >> (SD_SHIFT - SP_SHIFT));
-  }
-  
-  void ShiftDownRoamer(uint32_t iv)
-  {
-    word = ((word & (AT_MASK | DF_MASK)) >> (AT_SHIFT - HP_SHIFT)) |
-           ((word & SD_MASK) >> (SD_SHIFT - DF_SHIFT)) |
-           ((word & SP_MASK) << (SD_SHIFT - SP_SHIFT)) |
-           ((word & SA_MASK) >> (SA_SHIFT - SP_SHIFT)) |
-           ((iv & IV_MASK) << SA_SHIFT);
-  }
-  
-  void ShiftUpRoamer(uint32_t iv)
-  {
-    word = ((iv & IV_MASK) << HP_SHIFT) |
-           ((word & (HP_MASK | AT_MASK)) << (AT_SHIFT - HP_SHIFT)) |
-           ((word & DF_MASK) << (SD_SHIFT - DF_SHIFT)) |
-           ((word & SD_MASK) >> (SD_SHIFT - SP_SHIFT)) |
-           ((word & SP_MASK) << (SA_SHIFT - SP_SHIFT));
-  }
-  
   Element::Type HiddenType() const;
   uint32_t      HiddenPower() const;
   
-  uint32_t  word;
+  uint32_t  ivWord;
   
   class ImpossibleMinMaxIVRangeException : public Exception
   {
@@ -778,9 +750,9 @@ typedef IndividualValues  IVs;
 
 
 inline bool operator==(const IVs &ivs1, const IVs &ivs2)
-{ return ivs1.word == ivs2.word; }
+{ return ivs1.ivWord == ivs2.ivWord; }
 inline bool operator!=(const IVs &ivs1, const IVs &ivs2)
-{ return ivs1.word != ivs2.word; }
+{ return ivs1.ivWord != ivs2.ivWord; }
 
 
 // for breeding, when not all of a parent's IVs are set
@@ -1201,7 +1173,6 @@ struct Encounter
     BRIDGE_SHADOW,
     WATER_SPOT_SURFING,
     WATER_SPOT_FISHING,
-    NON_SHINY_STATIONARY,
     ROAMER,
     LARVESTA_EGG,
     ENTRALINK,
@@ -1216,7 +1187,6 @@ struct Encounter
     {
     case STARTER_FOSSIL_GIFT:
     case STATIONARY:
-    case NON_SHINY_STATIONARY:
     case ENTRALINK:
     case HIDDEN_GROTTO:
       return true;
@@ -1269,7 +1239,6 @@ struct Encounter
     case BRIDGE_SHADOW:
     case WATER_SPOT_SURFING:
     case WATER_SPOT_FISHING:
-    case NON_SHINY_STATIONARY:
     case HIDDEN_GROTTO:
     default:
       return true;
@@ -1298,7 +1267,6 @@ struct Encounter
       
     case STARTER_FOSSIL_GIFT:
     case STATIONARY:
-    case NON_SHINY_STATIONARY:
     case ROAMER:
     case LARVESTA_EGG:
     case ENTRALINK:

@@ -169,21 +169,15 @@ void WonderCardSeedSearcher::Search
    SearchRunner::StatusHandler &statusHandler,
    const std::vector<uint64_t> &startingSeeds)
 {
-  HashedSeedGenerator         seedGenerator(criteria.seedParameters);
+  HashedSeedGenerator     seedGenerator(criteria.seedParameters);
   
-#if 0
-  FrameGeneratorFactory       frameGeneratorFactory(criteria);
-  
-  SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGeneratorFactory,
-                                                         criteria.frameRange);
-#else
   AggressiveSeedSearcher  seedSearcher(criteria.frameParameters,
                                        criteria.frameRange, criteria.ivs,
                                        criteria.pid);
-#endif
-  FrameChecker                frameChecker(criteria);
   
-  SearchRunner                searcher;
+  FrameChecker            frameChecker(criteria);
+  
+  SearchRunner            searcher;
   
   if (startingSeeds.size() > 0)
     searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,

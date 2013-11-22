@@ -70,130 +70,30 @@ private:
 struct Gen5PIDRNG
 {
   template <class RNG>
-  static uint32_t NextWildPIDWord(RNG &rng, uint32_t tid, uint32_t sid)
-  {
-    return TIDBitTwiddle(FlipAbility(NextRawPIDWord(rng)), tid, sid);
-  }
-  
-  template <class RNG>
-  static uint32_t NextGiftPIDWord(RNG &rng)
-  {
-    return FlipAbility(NextRawPIDWord(rng));
-  }
-  
-  template <class RNG>
-  static uint32_t NextNonShinyPIDWord(RNG &rng, uint32_t tid, uint32_t sid)
-  {
-    return ForceNonShiny(FlipAbility(NextRawPIDWord(rng)), tid, sid);
-  }
-  
-  template <class RNG>
-  static uint32_t NextRoamerPIDWord(RNG &rng)
-  {
-    return NextRawPIDWord(rng);
-  }
-  
-  template <class RNG>
-  static uint32_t NextEggPIDWord(RNG &rng)
-  {
-    return (NextRawPIDWord(rng) * 0xFFFFFFFFULL) >> 32;
-  }
-  
-  template <class RNG>
-  static uint32_t NextEntraLinkPIDWord(RNG &rng,
-                                       Gender::Type gender, Gender::Ratio ratio,
-                                       uint32_t tid, uint32_t sid)
-  {
-    return ForceNonShiny(ClearAbility(ForceGender(NextRawPIDWord(rng),
-                                                  gender, ratio, rng)),
-                         tid, sid);
-  }
-  
-  template <class RNG>
-  static uint32_t NextDreamRadarPIDWord(RNG &rng,
-                                       Gender::Type gender, Gender::Ratio ratio,
-                                       uint32_t tid, uint32_t sid)
-  {
-    return ForceNonShiny(FlipAbility(ForceGender(NextRawPIDWord(rng),
-                                                 gender, ratio, rng)),
-                         tid, sid);
-  }
-  
-  template <class RNG>
-  static uint32_t NextCuteCharmPIDWord(RNG &rng,
-                                       Gender::Type gender, Gender::Ratio ratio,
-                                       uint32_t tid, uint32_t sid)
-  {
-    return TIDBitTwiddle(FlipAbility(ForceGender(NextRawPIDWord(rng),
-                                                 gender, ratio, rng)),
-                         tid, sid);
-  }
-  
-  template <class RNG>
   static uint32_t NextRawPIDWord(RNG &rng)
   {
     return rng.Next() >> 32;
   }
   
-  static uint32_t FlipAbility(uint32_t pid)
+  template <class RNG>
+  static uint32_t NextPID(RNG &rng, Gender::Type setGender, Gender::Ratio ratio,
+                          Shininess::Type shininess, uint32_t tid, uint32_t sid,
+                          Ability::Type setAbility, bool doTIDBitTwiddle)
   {
-    return pid ^ 0x00010000;
-  }
-  
-  static uint32_t ClearAbility(uint32_t pid)
-  {
-    return pid & ~0x00010000U;
-  }
-  
-  static uint32_t TIDBitTwiddle(uint32_t pid, uint32_t tid, uint32_t sid)
-  {
-    if ((tid ^ sid ^ pid) & 0x1)
-    {
-      return pid | 0x80000000;
-    }
-    else
-    {
-      return pid & 0x7fffffff;
-    }
-  }
-  
-  static uint32_t ForceAbility(uint32_t pid, Ability::Type ability)
-  {
-    switch (ability)
-    {
-    case Ability::NONE:
-    case Ability::ANY:
-    default:
-      return pid;
-      break;
-      
-    case Ability::ZERO:
-      return pid & ~0x00010000U;
-      break;
-      
-    case Ability::ONE:
-      return pid | 0x00010000;
-      break;
-      
-    case Ability::HIDDEN:
-      return pid & ~0x00010000U;
-      break;
-    }
-  }
-  
-  static uint32_t ForceShiny(uint32_t pid, uint32_t tid, uint32_t sid)
-  {
-    uint32_t  lowByte = pid & 0x000000ff;
+    uint32_t  pid = NextRawPIDWord(rng);
     
-    return ((lowByte ^ tid ^ sid) << 16) | lowByte;
-  }
-  
-  static uint32_t ForceNonShiny(uint32_t pid, uint32_t tid, uint32_t sid)
-  {
-    if (((pid >> 16) ^ (pid & 0xffff) ^ sid ^ tid) < 8)
-    {
-      pid = pid ^ 0x10000000;
-    }
+    if (setGender != Gender::ANY)
+      pid = ForceGender(pid, setGender, ratio, rng);
+    
+    if (shininess == Shininess::NEVER_SHINY)
+        pid = ForceNonShiny(pid, tid, sid);
+    else if (shininess == Shininess::ALWAYS_SHINY)
+        pid = ForceShiny(pid, tid, sid);
+    else if (doTIDBitTwiddle)
+        pid = TIDBitTwiddle(pid, tid, sid);
+    
+    if (((pid & 0x00010000) >> 16) != setAbility)
+      pid = Gen5PIDRNG::FlipAbility(pid);
     
     return pid;
   }
@@ -209,6 +109,47 @@ struct Gen5PIDRNG
     
     return (pid & 0xFFFFFF00) |
            Gender::MakeGenderValue(gender, ratio, (rng.Next() >> 32));
+  }
+  
+  static uint32_t ForceShiny(uint32_t pid, uint32_t tid, uint32_t sid)
+  {
+    uint32_t  lowByte = pid & 0x000000ff;
+    
+    return ((lowByte ^ tid ^ sid) << 16) | lowByte;
+  }
+  
+  static uint32_t ForceNonShiny(uint32_t pid, uint32_t tid, uint32_t sid)
+  {
+    if (((pid >> 16) ^ (pid & 0xffff) ^ sid ^ tid) < 8)
+      pid = pid ^ 0x10000000;
+    
+    return pid;
+  }
+  
+  static uint32_t TIDBitTwiddle(uint32_t pid, uint32_t tid, uint32_t sid)
+  {
+    if ((tid ^ sid ^ pid) & 0x1)
+      return pid | 0x80000000;
+    else
+      return pid & 0x7fffffff;
+  }
+  
+  static uint32_t FlipAbility(uint32_t pid)
+  {
+    return pid ^ 0x00010000;
+  }
+  
+  
+  template <class RNG>
+  static uint32_t NextEggPIDWord(RNG &rng)
+  {
+    return (NextRawPIDWord(rng) * 0xFFFFFFFFULL) >> 32;
+  }
+  
+  template <class RNG>
+  static Nature::Type NextNature(RNG &rng)
+  {
+    return Nature::Type(((rng.Next() >> 32) * 25) >> 32);
   }
 };
 

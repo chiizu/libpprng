@@ -132,7 +132,7 @@ private:
         
         frame.seed = i->first;
         frame.number = i->second.frame - 2;
-        frame.ivs = i->second.ivWord;
+        frame.ivs.SetFromGameDataWord(i->second.ivWord);
         
         if (frameChecker(frame))
           resultHandler(frame);

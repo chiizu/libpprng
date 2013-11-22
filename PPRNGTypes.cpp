@@ -572,12 +572,12 @@ Element::Type IVs::HiddenType() const
 {
   uint32_t  typeSum;
   
-  typeSum = (word & (0x1 << HP_SHIFT)) >> HP_SHIFT;
-  typeSum += (word & (0x1 << AT_SHIFT)) >> (AT_SHIFT - 1);
-  typeSum += (word & (0x1 << DF_SHIFT)) >> (DF_SHIFT - 2);
-  typeSum += (word & (0x1 << SP_SHIFT)) >> (SP_SHIFT - 3);
-  typeSum += (word & (0x1 << SA_SHIFT)) >> (SA_SHIFT - 4);
-  typeSum += (word & (0x1 << SD_SHIFT)) >> (SD_SHIFT - 5);
+  typeSum = (ivWord & (0x1 << HP_SHIFT)) >> HP_SHIFT;
+  typeSum += (ivWord & (0x1 << AT_SHIFT)) >> (AT_SHIFT - 1);
+  typeSum += (ivWord & (0x1 << DF_SHIFT)) >> (DF_SHIFT - 2);
+  typeSum += (ivWord & (0x1 << SP_SHIFT)) >> (SP_SHIFT - 3);
+  typeSum += (ivWord & (0x1 << SA_SHIFT)) >> (SA_SHIFT - 4);
+  typeSum += (ivWord & (0x1 << SD_SHIFT)) >> (SD_SHIFT - 5);
   
   return Element::Type(((typeSum * 15) / 63) + 1);
 }
@@ -586,12 +586,12 @@ uint32_t IVs::HiddenPower() const
 {
   uint32_t  powerSum;
   
-  powerSum = (word & (0x2 << HP_SHIFT)) >> (HP_SHIFT + 1);
-  powerSum += (word & (0x2 << AT_SHIFT)) >> (AT_SHIFT);
-  powerSum += (word & (0x2 << DF_SHIFT)) >> (DF_SHIFT - 1);
-  powerSum += (word & (0x2 << SP_SHIFT)) >> (SP_SHIFT - 2);
-  powerSum += (word & (0x2 << SA_SHIFT)) >> (SA_SHIFT - 3);
-  powerSum += (word & (0x2 << SD_SHIFT)) >> (SD_SHIFT - 4);
+  powerSum = (ivWord & (0x2 << HP_SHIFT)) >> (HP_SHIFT + 1);
+  powerSum += (ivWord & (0x2 << AT_SHIFT)) >> (AT_SHIFT);
+  powerSum += (ivWord & (0x2 << DF_SHIFT)) >> (DF_SHIFT - 1);
+  powerSum += (ivWord & (0x2 << SP_SHIFT)) >> (SP_SHIFT - 2);
+  powerSum += (ivWord & (0x2 << SA_SHIFT)) >> (SA_SHIFT - 3);
+  powerSum += (ivWord & (0x2 << SD_SHIFT)) >> (SD_SHIFT - 4);
   
   return ((powerSum * 40) / 63) + 30;
 }
@@ -816,28 +816,30 @@ uint64_t IVs::AdjustExpectedResultsForHiddenPower
 
 bool IVs::betterThan(const IndividualValues &ivs) const
 {
-  return ((word & IVs::HP_MASK) > (ivs.word & IVs::HP_MASK)) &&
-         ((word & IVs::AT_MASK) > (ivs.word & IVs::AT_MASK)) &&
-         ((word & IVs::DF_MASK) > (ivs.word & IVs::DF_MASK)) &&
-         ((word & IVs::SA_MASK) > (ivs.word & IVs::SA_MASK)) &&
-         ((word & IVs::SD_MASK) > (ivs.word & IVs::SD_MASK)) &&
-         ((word & IVs::SP_MASK) > (ivs.word & IVs::SP_MASK));
+  return ((ivWord & IVs::HP_MASK) > (ivs.ivWord & IVs::HP_MASK)) &&
+         ((ivWord & IVs::AT_MASK) > (ivs.ivWord & IVs::AT_MASK)) &&
+         ((ivWord & IVs::DF_MASK) > (ivs.ivWord & IVs::DF_MASK)) &&
+         ((ivWord & IVs::SA_MASK) > (ivs.ivWord & IVs::SA_MASK)) &&
+         ((ivWord & IVs::SD_MASK) > (ivs.ivWord & IVs::SD_MASK)) &&
+         ((ivWord & IVs::SP_MASK) > (ivs.ivWord & IVs::SP_MASK));
 }
 
 bool IVs::betterThanOrEqual(const IndividualValues &ivs) const
 {
-  return ((word & IVs::HP_MASK) >= (ivs.word & IVs::HP_MASK)) &&
-         ((word & IVs::AT_MASK) >= (ivs.word & IVs::AT_MASK)) &&
-         ((word & IVs::DF_MASK) >= (ivs.word & IVs::DF_MASK)) &&
-         ((word & IVs::SA_MASK) >= (ivs.word & IVs::SA_MASK)) &&
-         ((word & IVs::SD_MASK) >= (ivs.word & IVs::SD_MASK)) &&
-         ((word & IVs::SP_MASK) >= (ivs.word & IVs::SP_MASK));
+  return ((ivWord & IVs::HP_MASK) >= (ivs.ivWord & IVs::HP_MASK)) &&
+         ((ivWord & IVs::AT_MASK) >= (ivs.ivWord & IVs::AT_MASK)) &&
+         ((ivWord & IVs::DF_MASK) >= (ivs.ivWord & IVs::DF_MASK)) &&
+         ((ivWord & IVs::SA_MASK) >= (ivs.ivWord & IVs::SA_MASK)) &&
+         ((ivWord & IVs::SD_MASK) >= (ivs.ivWord & IVs::SD_MASK)) &&
+         ((ivWord & IVs::SP_MASK) >= (ivs.ivWord & IVs::SP_MASK));
 }
 
 IVPattern::Type IVPattern::Get(const IVs &min, const IVs &max,
                                bool considerHiddenPower,
                                uint32_t minHiddenPower)
 {
+  uint32_t  minWord = min.ivWord, maxWord = max.ivWord;
+  
   if ((min == IVs::Perfect) && (max == IVs::Perfect))
   {
     return IVPattern::HEX_FLAWLESS;
@@ -846,23 +848,27 @@ IVPattern::Type IVPattern::Get(const IVs &min, const IVs &max,
   {
     return IVPattern::HEX_FLAWLESS_TRICK;
   }
-  else if (((min.word & IVs::PhysPerfect.word) == IVs::PhysPerfect.word) &&
-           ((max.word & IVs::PhysPerfect.word) == IVs::PhysPerfect.word))
+  else if (((minWord & IVs::PhysPerfect.ivWord) == IVs::PhysPerfect.ivWord) &&
+           ((maxWord & IVs::PhysPerfect.ivWord) == IVs::PhysPerfect.ivWord))
   {
     return IVPattern::PHYSICAL_FLAWLESS;
   }
-  else if (((min.word & IVs::PhysPerfect.word) == IVs::PhysPerfectTrick.word) &&
-           ((max.word & IVs::PhysPerfect.word) == IVs::PhysPerfectTrick.word))
+  else if (((minWord & IVs::PhysPerfect.ivWord) ==
+            IVs::PhysPerfectTrick.ivWord) &&
+           ((maxWord & IVs::PhysPerfect.ivWord) ==
+            IVs::PhysPerfectTrick.ivWord))
   {
     return IVPattern::PHYSICAL_FLAWLESS_TRICK;
   }
-  else if (((min.word & IVs::SpecPerfect.word) == IVs::SpecPerfect.word) &&
-           ((max.word & IVs::SpecPerfect.word) == IVs::SpecPerfect.word))
+  else if (((minWord & IVs::SpecPerfect.ivWord) == IVs::SpecPerfect.ivWord) &&
+           ((maxWord & IVs::SpecPerfect.ivWord) == IVs::SpecPerfect.ivWord))
   {
     return IVPattern::SPECIAL_FLAWLESS;
   }
-  else if (((min.word & IVs::SpecPerfect.word) == IVs::SpecPerfectTrick.word) &&
-           ((max.word & IVs::SpecPerfect.word) == IVs::SpecPerfectTrick.word))
+  else if (((minWord & IVs::SpecPerfect.ivWord) ==
+            IVs::SpecPerfectTrick.ivWord) &&
+           ((maxWord & IVs::SpecPerfect.ivWord) ==
+            IVs::SpecPerfectTrick.ivWord))
   {
     return IVPattern::SPECIAL_FLAWLESS_TRICK;
   }

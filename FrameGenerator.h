@@ -64,7 +64,7 @@ public:
     ++m_frame.number;
     
     m_frame.pid = m_PIDRNG.NextPIDWord();
-    m_frame.ivs = m_IVRNG.NextIVWord();
+    m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
   }
   
   const Frame& CurrentFrame() { return m_frame; }
@@ -207,7 +207,7 @@ public:
       m_frame.pid = m_PIDRNG.NextPIDWord();
       m_frame.method1Number += 2;
     }
-    m_frame.ivs = m_IVRNG.NextIVWord();
+    m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
   }
   
   const Frame& CurrentFrame() { return m_frame; }
@@ -365,7 +365,7 @@ public:
     ++m_frame.number;
     m_frame.rngValue = m_RNG.PeekNext();
     
-    m_frame.baseIVs = m_IVRNG.NextIVWord();
+    m_frame.baseIVs.ivWord = m_IVRNG.NextIVWord();
     
     m_frame.ResetInheritance();
     
@@ -619,12 +619,11 @@ private:
   
   static const FrameGeneratorInfo  s_FrameGeneratorInfo[];
   
+  void NextGiftPID();
   void NextWildPID();
+  void NextRoamerPID();
   void NextEntraLinkPID();
   void NextHiddenHollowPID();
-  void NextNonShinyPID();
-  void NextGiftPID();
-  void NextRoamerPID();
   
   void NextWildFrame();
   void NextFishingFrame();
@@ -705,11 +704,12 @@ public:
   const Frame& CurrentFrame() { return m_frame; }
   
 private:
-  LCRNG5            m_initialValueRNG;
-  RNG               m_RNG;
-  IVRNG             m_IVRNG;
-  Frame             m_frame;
-  const Parameters  m_parameters;
+  LCRNG5               m_initialValueRNG;
+  RNG                  m_RNG;
+  IVRNG                m_IVRNG;
+  Frame                m_frame;
+  const Parameters     m_parameters;
+  const Ability::Type  m_pidAbility;
 };
 
 

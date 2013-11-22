@@ -94,42 +94,42 @@ struct SearchCriteria
         break;
         
       case IVPattern::HEX_FLAWLESS:
-        mask = IVs::Perfect.word; test = IVs::Perfect.word;
+        mask = IVs::Perfect.ivWord; test = IVs::Perfect.ivWord;
         break;
         
       case IVPattern::PHYSICAL_FLAWLESS:
-        mask = IVs::PhysPerfect.word; test = IVs::PhysPerfect.word;
+        mask = IVs::PhysPerfect.ivWord; test = IVs::PhysPerfect.ivWord;
         break;
         
       case IVPattern::SPECIAL_FLAWLESS:
-        mask = IVs::SpecPerfect.word; test = IVs::SpecPerfect.word;
+        mask = IVs::SpecPerfect.ivWord; test = IVs::SpecPerfect.ivWord;
         break;
         
       case IVPattern::SPECIAL_HIDDEN_POWER_FLAWLESS:
-        mask = IVs::HpPerfectLow.word; test = IVs::HpPerfectLow.word;
+        mask = IVs::HpPerfectLow.ivWord; test = IVs::HpPerfectLow.ivWord;
         break;
         
       case IVPattern::HEX_FLAWLESS_TRICK:
-        mask = IVs::Perfect.word; test = IVs::PerfectTrick.word;
+        mask = IVs::Perfect.ivWord; test = IVs::PerfectTrick.ivWord;
         break;
         
       case IVPattern::PHYSICAL_FLAWLESS_TRICK:
-        mask = IVs::PhysPerfect.word; test = IVs::PhysPerfectTrick.word;
+        mask = IVs::PhysPerfect.ivWord; test = IVs::PhysPerfectTrick.ivWord;
         break;
         
       case IVPattern::SPECIAL_FLAWLESS_TRICK:
-        mask = IVs::SpecPerfect.word; test = IVs::SpecPerfectTrick.word;
+        mask = IVs::SpecPerfect.ivWord; test = IVs::SpecPerfectTrick.ivWord;
         break;
         
       case IVPattern::SPECIAL_HIDDEN_POWER_FLAWLESS_TRICK:
-        mask = IVs::HpPerfectLow.word; test = IVs::HpPerfectTrickLow.word;
+        mask = IVs::HpPerfectLow.ivWord; test = IVs::HpPerfectTrickLow.ivWord;
         break;
       }
     }
     
     bool CheckPattern(const IVs &ivs) const
     {
-      return (ivs.word & mask) == test;
+      return (ivs.ivWord & mask) == test;
     }
     
     bool CheckIVs(const IVs &ivs) const

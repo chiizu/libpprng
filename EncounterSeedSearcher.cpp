@@ -155,7 +155,6 @@ struct IVFrameResultHandler
       
     case Encounter::STARTER_FOSSIL_GIFT:
     case Encounter::STATIONARY:
-    case Encounter::NON_SHINY_STATIONARY:
     case Encounter::ROAMER:
     case Encounter::LARVESTA_EGG:
     case Encounter::ENTRALINK:

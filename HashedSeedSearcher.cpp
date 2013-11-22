@@ -103,7 +103,7 @@ struct SeedHashSearcher
       while ((j != end) && (j->frame <= limit))
       {
         result.number = j->frame - m_frameOffset;
-        result.ivs = j->ivWord;
+        result.ivs.SetFromGameDataWord(j->ivWord);
         
         if (frameChecker(result))
           resultHandler(result);
@@ -145,7 +145,7 @@ struct SeedMapSearcher
     while ((i != end) && (i->second.frame <= limit))
     {
       result.number = i->second.frame - m_frameOffset;
-      result.ivs = i->second.ivWord;
+      result.ivs.SetFromGameDataWord(i->second.ivWord);
       
       if (frameChecker(result))
         resultHandler(result);

@@ -62,7 +62,7 @@ void CGearIVFrameGenerator::SkipFrames(uint32_t numFrames)
 void CGearIVFrameGenerator::AdvanceFrame()
 {
   ++m_frame.number;
-  m_frame.ivs = m_IVRNG.NextIVWord();
+  m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
 }
 
 
@@ -93,7 +93,7 @@ void HashedIVFrameGenerator::SkipFrames(uint32_t numFrames)
 void HashedIVFrameGenerator::AdvanceFrame()
 {
   ++m_frame.number;
-  m_frame.ivs = m_IVRNG.NextIVWord();
+  m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
 }
 
 
@@ -109,7 +109,8 @@ Gen5PIDFrameGenerator::Gen5PIDFrameGenerator
                      .bwEsvGenerator),
     m_RNG(seed.rawSeed), m_frame(seed), m_parameters(parameters),
     m_shinyChances((m_parameters.hasShinyCharm &&
-                    Game::IsBlack2White2(m_frame.seed.parameters.gameColor)) ?
+                    Game::IsBlack2White2(m_frame.seed.parameters.gameColor) &&
+                    (m_parameters.setShininess == Shininess::MAY_BE_SHINY)) ?
                       3 : 1)
 {
   uint32_t  skippedFrames = seed.GetSkippedPIDFrames(parameters.memoryLinkUsed);
@@ -117,6 +118,7 @@ Gen5PIDFrameGenerator::Gen5PIDFrameGenerator
   
   m_frame.number = 0;
   m_frame.rngValue = 0;
+  m_frame.ability = parameters.setAbility;
   m_frame.isEncounter = true;
   m_frame.encounterType = parameters.encounterType;
   m_frame.encounterItem = EncounterItem::NONE;
@@ -207,11 +209,6 @@ const Gen5PIDFrameGenerator::FrameGeneratorInfo
     &Gen5PIDFrameGenerator::NextWildFrame,
     &Gen5PIDFrameGenerator::BWFishingESV,
     &Gen5PIDFrameGenerator::B2W2FishingESV },
-  // NON_SHINY_STATIONARY
-  { &Gen5PIDFrameGenerator::NextNonShinyPID,
-    &Gen5PIDFrameGenerator::NextStationaryFrame,
-    &Gen5PIDFrameGenerator::NoESV,
-    &Gen5PIDFrameGenerator::NoESV },
   // ROAMER
   { &Gen5PIDFrameGenerator::NextRoamerPID,
     &Gen5PIDFrameGenerator::NextSimpleFrame,
@@ -281,76 +278,66 @@ void Gen5PIDFrameGenerator::NoESV()
   m_frame.esv = ESV::Value(0);
 }
 
-void Gen5PIDFrameGenerator::NextWildPID()
-{
-  uint32_t  shinyChances = m_shinyChances;
-  uint32_t  slot = (m_frame.esv == ESV::NO_SLOT) ? 0 : ESV::Slot(m_frame.esv);
-  
-  do
-  {
-    if ((m_parameters.leadAbility == LeadAbility::CUTE_CHARM) &&
-        (m_parameters.setRatio[slot] != Gender::NO_RATIO) &&
-        m_frame.abilityActivated)
-    {
-      m_frame.pid = Gen5PIDRNG::NextCuteCharmPIDWord
-                      (m_RNG, m_parameters.setGender,
-                       m_parameters.setRatio[slot],
-                       m_parameters.tid, m_parameters.sid);
-    }
-    else
-    {
-      m_frame.pid =
-        Gen5PIDRNG::NextWildPIDWord(m_RNG, m_parameters.tid, m_parameters.sid);
-    }
-  }
-  while (!m_frame.pid.IsShiny(m_parameters.tid, m_parameters.sid) &&
-         (--shinyChances > 0));
-}
-
-void Gen5PIDFrameGenerator::NextEntraLinkPID()
-{
-  m_frame.pid = Gen5PIDRNG::NextEntraLinkPIDWord
-                  (m_RNG, m_parameters.setGender,
-                   m_parameters.setRatio[0],
-                   m_parameters.tid, m_parameters.sid);
-}
-
-void Gen5PIDFrameGenerator::NextHiddenHollowPID()
-{
-  m_frame.pid = Gen5PIDRNG::NextDreamRadarPIDWord
-                  (m_RNG, m_parameters.setGender,
-                   m_parameters.setRatio[0],
-                   m_parameters.tid, m_parameters.sid);
-}
-
-void Gen5PIDFrameGenerator::NextNonShinyPID()
-{
-  m_frame.pid = Gen5PIDRNG::NextNonShinyPIDWord
-                  (m_RNG, m_parameters.tid, m_parameters.sid);
-}
-
 void Gen5PIDFrameGenerator::NextGiftPID()
 {
   uint32_t  shinyChances = m_shinyChances;
   
   do
   {
-    m_frame.pid = Gen5PIDRNG::NextGiftPIDWord(m_RNG);
+    m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, m_parameters.setGender,
+                                      m_parameters.setRatio[0],
+                                      m_parameters.setShininess,
+                                      m_parameters.tid, m_parameters.sid,
+                                      m_parameters.setAbility, false);
   }
   while (!m_frame.pid.IsShiny(m_parameters.tid, m_parameters.sid) &&
          (--shinyChances > 0));
 }
 
-void Gen5PIDFrameGenerator::NextRoamerPID()
+void Gen5PIDFrameGenerator::NextWildPID()
 {
   uint32_t  shinyChances = m_shinyChances;
   
+  uint32_t  slot = (m_frame.esv == ESV::NO_SLOT) ? 0 : ESV::Slot(m_frame.esv);
+  
   do
   {
-    m_frame.pid = Gen5PIDRNG::NextRoamerPIDWord(m_RNG);
+    Gender::Type  setGender =
+      ((m_parameters.leadAbility == LeadAbility::CUTE_CHARM) &&
+       !m_frame.abilityActivated) ?
+        Gender::ANY : m_parameters.setGender;
+    
+    m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, setGender,
+                                      m_parameters.setRatio[slot],
+                                      m_parameters.setShininess,
+                                      m_parameters.tid, m_parameters.sid,
+                                      m_parameters.setAbility, true);
   }
-  while (!m_frame.pid.IsShiny(m_parameters.tid, m_parameters.sid) &&
-         (--shinyChances > 0));
+  while ((--shinyChances > 0) &&
+         !m_frame.pid.IsShiny(m_parameters.tid, m_parameters.sid));
+}
+
+void Gen5PIDFrameGenerator::NextRoamerPID()
+{
+  m_frame.pid = Gen5PIDRNG::NextRawPIDWord(m_RNG);
+}
+
+void Gen5PIDFrameGenerator::NextEntraLinkPID()
+{
+  m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, m_parameters.setGender,
+                                    m_parameters.setRatio[0],
+                                    Shininess::NEVER_SHINY,
+                                    m_parameters.tid, m_parameters.sid,
+                                    Ability::ZERO, false);
+}
+
+void Gen5PIDFrameGenerator::NextHiddenHollowPID()
+{
+  m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, m_parameters.setGender,
+                                    m_parameters.setRatio[0],
+                                    Shininess::NEVER_SHINY,
+                                    m_parameters.tid, m_parameters.sid,
+                                    Ability::ANY, false);
 }
 
 void Gen5PIDFrameGenerator::NextWildFrame()
@@ -572,20 +559,12 @@ void Gen5PIDFrameGenerator::NextSimpleFrame()
 void Gen5PIDFrameGenerator::ApplyAbility()
 {
   if (m_parameters.setAbility == Ability::ANY)
-  {
     m_frame.ability = m_frame.pid.Gen5Ability();
-  }
-  else
-  {
-    m_frame.pid = Gen5PIDRNG::ForceAbility(m_frame.pid.word,
-                                           m_parameters.setAbility);
-    m_frame.ability = m_parameters.setAbility;
-  }
 }
 
 void Gen5PIDFrameGenerator::NextNature()
 {
-  m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+  m_frame.nature = Gen5PIDRNG::NextNature(m_RNG);
 }
 
 void Gen5PIDFrameGenerator::CheckLeadAbility()
@@ -665,7 +644,9 @@ WonderCardFrameGenerator::WonderCardFrameGenerator(const HashedSeed &seed,
                                                    const Parameters &parameters)
   : m_initialValueRNG(seed.rawSeed),
     m_RNG(seed.rawSeed), m_IVRNG(m_RNG, IVRNG::Normal, parameters.cardIVs),
-    m_frame(seed), m_parameters(parameters)
+    m_frame(seed), m_parameters(parameters),
+    m_pidAbility((parameters.cardAbility == Ability::HIDDEN) ?
+                  Ability::ZERO : parameters.cardAbility)
 {
   if (!m_parameters.cardIVs.allSet())
   {
@@ -698,6 +679,9 @@ WonderCardFrameGenerator::WonderCardFrameGenerator(const HashedSeed &seed,
   m_frame.number = 0;
   if (parameters.cardIVs.allSet())
     m_frame.ivs = parameters.cardIVs.values;
+  
+  m_frame.ability = m_parameters.cardAbility;
+  m_frame.nature = m_parameters.cardNature;
 }
 
 void WonderCardFrameGenerator::SkipFrames(uint32_t numFrames)
@@ -720,62 +704,27 @@ void WonderCardFrameGenerator::AdvanceFrame()
   m_RNG.AdvanceBuffer();
   
   if (!m_parameters.cardIVs.allSet())
-    m_frame.ivs = m_IVRNG.NextIVWord();
+    m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
   
   // 'unused' frames
   m_RNG.Next();
   m_RNG.Next();
   
-  uint32_t  pid = Gen5PIDRNG::NextRawPIDWord(m_RNG);
-  if (m_parameters.cardGender != Gender::ANY)
-  {
-    pid = Gen5PIDRNG::ForceGender(pid, m_parameters.cardGender,
-                                  m_parameters.cardGenderRatio, m_RNG);
-  }
-  
-  switch (m_parameters.cardShininess)
-  {
-  case Shininess::NEVER_SHINY:
-    pid = Gen5PIDRNG::ForceNonShiny(pid, m_parameters.cardTID,
-                                    m_parameters.cardSID);
-    break;
-  
-  case Shininess::ALWAYS_SHINY:
-    pid = Gen5PIDRNG::ForceShiny(pid, m_parameters.cardTID,
-                                 m_parameters.cardSID);
-    break;
-  
-  case Shininess::MAY_BE_SHINY:
-  default:
-    break;
-  }
+  m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, m_parameters.cardGender,
+                                    m_parameters.cardGenderRatio,
+                                    m_parameters.cardShininess,
+                                    m_parameters.cardTID, m_parameters.cardSID,
+                                    m_pidAbility, false);
   
   if (m_parameters.cardAbility == Ability::ANY)
-  {
-    m_frame.pid = Gen5PIDRNG::FlipAbility(pid);
     m_frame.ability = m_frame.pid.Gen5Ability();
-  }
-  else if (m_parameters.cardAbility == Ability::HIDDEN)
-  {
-    m_frame.pid = Gen5PIDRNG::ClearAbility(pid);
-    m_frame.ability = Ability::HIDDEN;
-  }
-  else
-  {
-    m_frame.pid = Gen5PIDRNG::ForceAbility(pid, m_parameters.cardAbility);
-    m_frame.ability = m_parameters.cardAbility;
-  }
   
   if (m_parameters.cardNature == Nature::ANY)
   {
     // skip 'unused' frames
     m_RNG.Next();
     
-    m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
-  }
-  else
-  {
-    m_frame.nature = m_parameters.cardNature;
+    m_frame.nature = Gen5PIDRNG::NextNature(m_RNG);
   }
 }
 
@@ -790,7 +739,7 @@ bool WonderCardFrameGenerator::AdvanceFrameWithCriteria
   m_RNG.AdvanceBuffer();
   
   if (!m_parameters.cardIVs.allSet())
-    m_frame.ivs = m_IVRNG.NextIVWord();
+    m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
   
   if (!ivCriteria.CheckIVs(m_frame.ivs) ||
       !ivCriteria.CheckHiddenPower(m_frame.ivs))
@@ -800,64 +749,31 @@ bool WonderCardFrameGenerator::AdvanceFrameWithCriteria
   m_RNG.Next();
   m_RNG.Next();
   
-  uint32_t  pid = Gen5PIDRNG::NextRawPIDWord(m_RNG);
-  if (m_parameters.cardGender != Gender::ANY)
-  {
-    pid = Gen5PIDRNG::ForceGender(pid, m_parameters.cardGender,
-                                  m_parameters.cardGenderRatio, m_RNG);
-  }
+  m_frame.pid = Gen5PIDRNG::NextPID(m_RNG, m_parameters.cardGender,
+                                    m_parameters.cardGenderRatio,
+                                    m_parameters.cardShininess,
+                                    m_parameters.cardTID, m_parameters.cardSID,
+                                    m_pidAbility, false);
   
-  if (!pidCriteria.CheckGender(PID(pid)))
+  if (!pidCriteria.CheckGender(PID(m_frame.pid)))
     return false;
-  
-  switch (m_parameters.cardShininess)
-  {
-  case Shininess::NEVER_SHINY:
-    pid = Gen5PIDRNG::ForceNonShiny(pid, m_parameters.cardTID,
-                                    m_parameters.cardSID);
-    break;
-  
-  case Shininess::ALWAYS_SHINY:
-    pid = Gen5PIDRNG::ForceShiny(pid, m_parameters.cardTID,
-                                 m_parameters.cardSID);
-    break;
-  
-  case Shininess::MAY_BE_SHINY:
-  default:
-    break;
-  }
   
   if (m_parameters.cardAbility == Ability::ANY)
   {
-    m_frame.pid = Gen5PIDRNG::FlipAbility(pid);
     m_frame.ability = m_frame.pid.Gen5Ability();
-  }
-  else if (m_parameters.cardAbility == Ability::HIDDEN)
-  {
-    m_frame.pid = Gen5PIDRNG::ClearAbility(pid);
-    m_frame.ability = Ability::HIDDEN;
-  }
-  else
-  {
-    m_frame.pid = Gen5PIDRNG::ForceAbility(pid, m_parameters.cardAbility);
-    m_frame.ability = m_parameters.cardAbility;
-  }
   
-  if (!pidCriteria.CheckAbility(m_frame.ability))
-    return false;
+    if (!pidCriteria.CheckAbility(m_frame.ability))
+      return false;
+  }
   
   if (m_parameters.cardNature == Nature::ANY)
   {
     // skip 'unused' frames
     m_RNG.Next();
     
-    m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+    m_frame.nature = Gen5PIDRNG::NextNature(m_RNG);
     
     return pidCriteria.CheckNature(m_frame.nature);
-  }
-  else
-  {
-    m_frame.nature = m_parameters.cardNature;
   }
   
   return true;
@@ -919,7 +835,7 @@ void Gen5BreedingFrameGenerator::AdvanceFrame()
   
   m_NextSeed = m_RNG.Seed();
   
-  m_frame.nature = Nature::Type(((m_RNG.Next() >> 32) * 25) >> 32);
+  m_frame.nature = Gen5PIDRNG::NextNature(m_RNG);
   
   if (m_parameters.usingEverstone)
   {
@@ -1053,7 +969,7 @@ void DreamRadarFrameGenerator::SkipFrames(uint32_t numFrames)
 
 void DreamRadarFrameGenerator::AdvanceFrame()
 {
-  m_frame.ivs = m_IVRNG.NextIVWord();
+  m_frame.ivs.ivWord = m_IVRNG.NextIVWord();
   
   m_PIDRNG.AdvanceBuffer();
   
@@ -1067,16 +983,17 @@ void DreamRadarFrameGenerator::AdvanceFrame()
   while (skippedFrames-- > 0)
     m_PIDRNG.Next();
   
-  m_frame.pid =
-    Gen5PIDRNG::NextDreamRadarPIDWord(m_PIDRNG, m_parameters.targetGender,
-                                      m_parameters.targetRatio,
-                                      m_parameters.tid, m_parameters.sid);
+  m_frame.pid = Gen5PIDRNG::NextPID(m_PIDRNG, m_parameters.targetGender,
+                                    m_parameters.targetRatio,
+                                    Shininess::NEVER_SHINY,
+                                    m_parameters.tid, m_parameters.sid,
+                                    Ability::ANY, false);
   
   // skip 2 frames for something...
   m_PIDRNG.Next();
   m_PIDRNG.Next();
   
-  m_frame.nature = Nature::Type(((m_PIDRNG.Next() >> 32) * 25) >> 32);
+  m_frame.nature = Gen5PIDRNG::NextNature(m_PIDRNG);
   
   // skipped when advancing via spinner
   m_PIDRNG.AdvanceBuffer();
@@ -1103,16 +1020,18 @@ DreamRadarFrame DreamRadarFrameGenerator::FrameFromIVFrame
   while (skipped-- > 0)
     pidRNG.Next();
   
-  result.pid =
-    Gen5PIDRNG::NextDreamRadarPIDWord(pidRNG, parameters.targetGender,
-                                      parameters.targetRatio,
-                                      parameters.tid, parameters.sid);
+  
+  result.pid = Gen5PIDRNG::NextPID(pidRNG, parameters.targetGender,
+                                   parameters.targetRatio,
+                                   Shininess::NEVER_SHINY,
+                                   parameters.tid, parameters.sid,
+                                   Ability::ANY, false);
   
   // skip 2 frames for something...
   pidRNG.Next();
   pidRNG.Next();
   
-  result.nature = Nature::Type(((pidRNG.Next() >> 32) * 25) >> 32);
+  result.nature = Gen5PIDRNG::NextNature(pidRNG);
   
   return result;
 }

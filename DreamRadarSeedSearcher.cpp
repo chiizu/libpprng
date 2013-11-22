@@ -76,7 +76,7 @@ struct SeedMapSearcher
     while ((i != end) && (i->second.frame <= limit))
     {
       ivFrame.number = i->second.frame;
-      ivFrame.ivs = i->second.ivWord;
+      ivFrame.ivs.SetFromGameDataWord(i->second.ivWord);
       
       if (((ivFrame.number & 0x1) == (m_lowIVFrame & 0x1)) &&
           frameChecker.m_criteria.ivs.CheckIVs(ivFrame.ivs) &&

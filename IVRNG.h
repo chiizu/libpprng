@@ -37,7 +37,10 @@ public:
   
   uint32_t NextIVWord()
   {
-    return (m_RNG.Next() >> 16) | (m_RNG.Next() & 0xffff0000);
+    IVs  result;
+    result.SetFromGameDataWord((m_RNG.Next() >> 16) |
+                               (m_RNG.Next() & 0xffff0000));
+    return result.ivWord;
   }
   
 private:
@@ -60,7 +63,10 @@ public:
     // skip one call
     m_RNG.Next();
     
-    return temp | (m_RNG.Next() & 0xffff0000);
+    IVs  result;
+    result.SetFromGameDataWord(temp | (m_RNG.Next() & 0xffff0000));
+    
+    return result.ivWord;
   }
   
 private:
@@ -123,23 +129,22 @@ public:
   
   uint32_t NextNormalIVWord(uint32_t buffer)
   {
-    uint32_t  result = (buffer & 0x7fff) |
-                       ((buffer & 0x01ff8000) << 6) |
-                       ((buffer & 0x3e000000) >> 9);
-    return result;
+    return buffer;
   }
   
   uint32_t NextRoamerIVWord(uint32_t buffer)
   {
     uint32_t  result = (buffer & 0x7fff) |
-                       ((buffer & 0x000f8000) << 11) |
-                       ((buffer & 0x3ff00000) >> 4);
+                       ((buffer & 0x000f8000) << 10) |
+                       ((buffer & 0x3ff00000) >> 5);
     return result;
   }
   
   uint32_t NextSetIVsNormalIVWord(uint32_t buffer)
   {
-    IVs  current(NextNormalIVWord(buffer));
+    IVs  current;
+    current.ivWord = buffer;
+    
     IVs  result;
     int  ivIdx = IVs::SP;
     
@@ -150,7 +155,7 @@ public:
     result.at(m_setIVs.isSet(IVs::AT) ? m_setIVs.at() : current.iv(ivIdx--));
     result.hp(m_setIVs.isSet(IVs::HP) ? m_setIVs.hp() : current.iv(ivIdx--));
     
-    return result.word;
+    return result.ivWord;
   }
   
   RNG          &m_RNG;
