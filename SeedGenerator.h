@@ -37,10 +37,9 @@ public:
   typedef uint32_t  SeedType;
   typedef uint32_t  SeedCountType;
   
-  enum { SeedsPerChunk = 20000 };
-  
   Gen34IVSeedGenerator(IVs minIVs, IVs maxIVs, uint32_t method = 1);
   
+  SeedCountType SeedsPerChunk() const { return 20000; }
   SeedCountType NumberOfSeeds() const;
   
   void SkipSeeds(uint64_t numSeeds);
@@ -63,13 +62,13 @@ public:
   typedef uint32_t  SeedType;
   typedef uint32_t  SeedCountType;
   
-  enum { SeedsPerChunk = 20000 };
-  
   TimeSeedGenerator(uint32_t minDelay, uint32_t maxDelay)
     : m_minDelay(minDelay), m_maxDelay(maxDelay & 0xffff),
       m_dayMonthMinuteSecond(0xff000000), m_hour(0x00170000),
       m_delay(maxDelay)
   {}
+  
+  SeedCountType SeedsPerChunk() const { return 20000; }
   
   SeedCountType NumberOfSeeds() const
   {
@@ -140,12 +139,12 @@ public:
   typedef TimeSeedGenerator::SeedType       SeedType;
   typedef TimeSeedGenerator::SeedCountType  SeedCountType;
   
-  enum { SeedsPerChunk = 10000 };
-  
   CGearSeedGenerator(uint32_t minDelay, uint32_t maxDelay,
                      uint32_t macAddressLow)
     : m_macAddressLow(macAddressLow), m_timeSeedGenerator(minDelay, maxDelay)
   {}
+  
+  SeedCountType SeedsPerChunk() const { return 10000; }
   
   SeedCountType NumberOfSeeds() const
   {
@@ -211,11 +210,12 @@ public:
     SeedCountType NumberOfSeeds() const;
   };
   
-  enum { SeedsPerChunk = 10000 };
-  
-  HashedSeedGenerator(const HashedSeedGenerator::Parameters &parameters);
+  HashedSeedGenerator(const HashedSeedGenerator::Parameters &parameters,
+                      SeedCountType seedsPerChunk = 10000);
   
   HashedSeedGenerator(const HashedSeedGenerator &other);
+  
+  SeedCountType SeedsPerChunk() const { return m_seedsPerChunk; }
   
   SeedCountType NumberOfSeeds() const;
   
@@ -227,6 +227,7 @@ public:
   
 private:
   const HashedSeedGenerator::Parameters  m_parameters;
+  const SeedCountType                    m_seedsPerChunk;
   
   HashedSeedMessage                      m_seedMessage;
   

@@ -49,8 +49,6 @@ public:
   typedef CGearNatureSeed  SeedType;
   typedef uint64_t         SeedCountType;
   
-  enum { SeedsPerChunk = 1000 };
-  
   NatureSeedGenerator(const CGearNatureSearcher::Criteria &criteria)
     : m_timesList(ChooseTimes(criteria)), m_iter(m_timesList.begin()),
       m_parameters(SetTimes(criteria.hashedSeedParameters, m_timesList)),
@@ -58,6 +56,8 @@ public:
       m_numGeneratorSeeds(m_parameters.NumberOfSeeds()),
       m_seedNum(0)
   {}
+  
+  SeedCountType SeedsPerChunk() const { return 1000; }
   
   SeedCountType NumberOfSeeds() const
   {

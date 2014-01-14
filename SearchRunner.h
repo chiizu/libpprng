@@ -138,7 +138,7 @@ private:
     
     uint64_t  numSeeds = seedGenerator.NumberOfSeeds();
     
-    double  seedPercent = double(SeedGenerator::SeedsPerChunk) / numSeeds;
+    double  seedPercent = double(seedGenerator.SeedsPerChunk()) / numSeeds;
     
     if (seedPercent > 0.002)
       seedPercent = 0.002;

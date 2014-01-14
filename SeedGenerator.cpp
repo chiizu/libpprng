@@ -148,8 +148,9 @@ Gen34IVSeedGenerator::SeedType Gen34IVSeedGenerator::Next()
 
 
 HashedSeedGenerator::HashedSeedGenerator
-  (const HashedSeedGenerator::Parameters &parameters)
-: m_parameters(parameters),
+  (const HashedSeedGenerator::Parameters &parameters,
+   SeedCountType seedsPerChunk)
+: m_parameters(parameters), m_seedsPerChunk(seedsPerChunk),
   m_seedMessage(parameters.ToInitialSeedParameters(),
                 parameters.excludedSeasonMask),
   m_timer0(parameters.timer0High), m_vcount(parameters.vcountHigh),
@@ -158,7 +159,8 @@ HashedSeedGenerator::HashedSeedGenerator
 {}
 
 HashedSeedGenerator::HashedSeedGenerator(const HashedSeedGenerator &other)
-: m_parameters(other.m_parameters), m_seedMessage(other.m_seedMessage),
+: m_parameters(other.m_parameters), m_seedsPerChunk(other.m_seedsPerChunk),
+  m_seedMessage(other.m_seedMessage),
   m_timer0(other.m_timer0), m_vcount(other.m_vcount), m_vframe(other.m_vframe),
   m_heldButtonsIter(m_parameters.heldButtons.begin() +
                     (other.m_heldButtonsIter -
@@ -459,7 +461,7 @@ std::list<HashedSeedGenerator> HashedSeedGenerator::Split(uint32_t parts)
     p.fromTime = fromTime;
     p.toTime = toTime;
     
-    HashedSeedGenerator  part(p);
+    HashedSeedGenerator  part(p, m_seedsPerChunk);
     
     result.push_back(part);
     

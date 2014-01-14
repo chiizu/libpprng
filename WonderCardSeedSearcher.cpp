@@ -169,7 +169,7 @@ void WonderCardSeedSearcher::Search
    SearchRunner::StatusHandler &statusHandler,
    const std::vector<uint64_t> &startingSeeds)
 {
-  HashedSeedGenerator     seedGenerator(criteria.seedParameters);
+  HashedSeedGenerator     seedGenerator(criteria.seedParameters, 2000);
   
   AggressiveSeedSearcher  seedSearcher(criteria.frameParameters,
                                        criteria.frameRange, criteria.ivs,

@@ -36,11 +36,11 @@ public:
   typedef uint32_t  SeedType;
   typedef uint32_t  SeedCountType;
   
-  enum { SeedsPerChunk = 1000 };
-  
   FastSearchSeedGenerator()
     : m_dayMonthMinuteSecond(0xff000000), m_hour(0x00170000)
   {}
+  
+  SeedCountType SeedsPerChunk() const { return 1000; }
   
   SeedCountType NumberOfSeeds() const
   {
