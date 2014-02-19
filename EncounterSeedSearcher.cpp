@@ -56,8 +56,11 @@ struct IVFrameResultHandler
           {
             parameters.setGender = Gender::FEMALE;
             CheckPIDFrames(frame, parameters);
+            
             parameters.setGender = Gender::MALE;
             CheckPIDFrames(frame, parameters);
+            
+            parameters.setGender = Gender::ANY;
           }
           else
           {
