@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011-2012 chiizu
+  Copyright (C) 2011-2014 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -20,8 +20,8 @@
 
 
 #include "HashedSeedMessage.h"
-#include "LinearCongruentialRNG.h"
 
+#include "HashedSeedCalculator.h"
 
 using namespace boost::gregorian;
 
@@ -30,158 +30,6 @@ namespace pprng
 
 namespace
 {
-
-struct Digest
-{
-  uint32_t  h[5];
-};
-
-
-#define K0  0x5A827999
-#define K1  0x6ED9EBA1
-#define K2  0x8F1BBCDC
-#define K3  0xCA62C1D6
-
-#define H0  0x67452301
-#define H1  0xEFCDAB89
-#define H2  0x98BADCFE
-#define H3  0x10325476
-#define H4  0xC3D2E1F0
-
-#define CalcW(I) \
-  temp = w[(I - 3) & 0xf] ^ w[(I - 8) & 0xf] ^ w[(I - 14) & 0xf] ^ w[(I - 16) & 0xf]; \
-  w[I & 0xf] = temp = (temp << 1) | (temp >> 31)
-
-
-#define Section1Calc() \
-  temp = ((a << 5) | (a >> 27)) + ((b & c) | (~b & d)) + e + K0 + temp
-
-#define Section2Calc() \
-  temp = ((a << 5) | (a >> 27)) + (b ^ c ^ d) + e + K1 + temp
-
-#define Section3Calc() \
-  temp = ((a << 5) | (a >> 27)) + ((b & c) | ((b | c) & d)) + e + K2 + temp
-
-#define Section4Calc() \
-  temp = ((a << 5) | (a >> 27)) + (b ^ c ^ d) + e + K3 + temp
-
-#define UpdateVars() \
-  e = d; \
-  d = c; \
-  c = (b << 30) | (b >> 2); \
-  b = a; \
-  a = temp
-
-Digest SHA1(const uint32_t *message)
-{
-  uint32_t  w[16], temp;
-  
-  uint32_t  a = H0;
-  uint32_t  b = H1;
-  uint32_t  c = H2;
-  uint32_t  d = H3;
-  uint32_t  e = H4;
-  
-  // Section 1: 0-19
-  w[0] = temp = message[0]; Section1Calc(); UpdateVars();
-  w[1] = temp = message[1]; Section1Calc(); UpdateVars();
-  w[2] = temp = message[2]; Section1Calc(); UpdateVars();
-  w[3] = temp = message[3]; Section1Calc(); UpdateVars();
-  w[4] = temp = message[4]; Section1Calc(); UpdateVars();
-  w[5] = temp = message[5]; Section1Calc(); UpdateVars();
-  w[6] = temp = message[6]; Section1Calc(); UpdateVars();
-  w[7] = temp = message[7]; Section1Calc(); UpdateVars();
-  w[8] = temp = message[8]; Section1Calc(); UpdateVars();
-  w[9] = temp = message[9]; Section1Calc(); UpdateVars();
-  w[10] = temp = message[10]; Section1Calc(); UpdateVars();
-  w[11] = temp = message[11]; Section1Calc(); UpdateVars();
-  w[12] = temp = message[12]; Section1Calc(); UpdateVars();
-  w[13] = temp = message[13]; Section1Calc(); UpdateVars();
-  w[14] = temp = message[14]; Section1Calc(); UpdateVars();
-  w[15] = temp = message[15]; Section1Calc(); UpdateVars();
-  
-  CalcW(16); Section1Calc(); UpdateVars();
-  CalcW(17); Section1Calc(); UpdateVars();
-  CalcW(18); Section1Calc(); UpdateVars();
-  CalcW(19); Section1Calc(); UpdateVars();
-  
-  // Section 2: 20 - 39
-  CalcW(20); Section2Calc(); UpdateVars();
-  CalcW(21); Section2Calc(); UpdateVars();
-  CalcW(22); Section2Calc(); UpdateVars();
-  CalcW(23); Section2Calc(); UpdateVars();
-  CalcW(24); Section2Calc(); UpdateVars();
-  CalcW(25); Section2Calc(); UpdateVars();
-  CalcW(26); Section2Calc(); UpdateVars();
-  CalcW(27); Section2Calc(); UpdateVars();
-  CalcW(28); Section2Calc(); UpdateVars();
-  CalcW(29); Section2Calc(); UpdateVars();
-  CalcW(30); Section2Calc(); UpdateVars();
-  CalcW(31); Section2Calc(); UpdateVars();
-  CalcW(32); Section2Calc(); UpdateVars();
-  CalcW(33); Section2Calc(); UpdateVars();
-  CalcW(34); Section2Calc(); UpdateVars();
-  CalcW(35); Section2Calc(); UpdateVars();
-  CalcW(36); Section2Calc(); UpdateVars();
-  CalcW(37); Section2Calc(); UpdateVars();
-  CalcW(38); Section2Calc(); UpdateVars();
-  CalcW(39); Section2Calc(); UpdateVars();
-  
-  // Section 3: 40 - 59
-  CalcW(40); Section3Calc(); UpdateVars();
-  CalcW(41); Section3Calc(); UpdateVars();
-  CalcW(42); Section3Calc(); UpdateVars();
-  CalcW(43); Section3Calc(); UpdateVars();
-  CalcW(44); Section3Calc(); UpdateVars();
-  CalcW(45); Section3Calc(); UpdateVars();
-  CalcW(46); Section3Calc(); UpdateVars();
-  CalcW(47); Section3Calc(); UpdateVars();
-  CalcW(48); Section3Calc(); UpdateVars();
-  CalcW(49); Section3Calc(); UpdateVars();
-  CalcW(50); Section3Calc(); UpdateVars();
-  CalcW(51); Section3Calc(); UpdateVars();
-  CalcW(52); Section3Calc(); UpdateVars();
-  CalcW(53); Section3Calc(); UpdateVars();
-  CalcW(54); Section3Calc(); UpdateVars();
-  CalcW(55); Section3Calc(); UpdateVars();
-  CalcW(56); Section3Calc(); UpdateVars();
-  CalcW(57); Section3Calc(); UpdateVars();
-  CalcW(58); Section3Calc(); UpdateVars();
-  CalcW(59); Section3Calc(); UpdateVars();
-  
-  // Section 3: 60 - 79
-  CalcW(60); Section4Calc(); UpdateVars();
-  CalcW(61); Section4Calc(); UpdateVars();
-  CalcW(62); Section4Calc(); UpdateVars();
-  CalcW(63); Section4Calc(); UpdateVars();
-  CalcW(64); Section4Calc(); UpdateVars();
-  CalcW(65); Section4Calc(); UpdateVars();
-  CalcW(66); Section4Calc(); UpdateVars();
-  CalcW(67); Section4Calc(); UpdateVars();
-  CalcW(68); Section4Calc(); UpdateVars();
-  CalcW(69); Section4Calc(); UpdateVars();
-  CalcW(70); Section4Calc(); UpdateVars();
-  CalcW(71); Section4Calc(); UpdateVars();
-  CalcW(72); Section4Calc(); UpdateVars();
-  CalcW(73); Section4Calc(); UpdateVars();
-  CalcW(74); Section4Calc(); UpdateVars();
-  CalcW(75); Section4Calc(); UpdateVars();
-  CalcW(76); Section4Calc(); UpdateVars();
-  CalcW(77); Section4Calc(); UpdateVars();
-  CalcW(78); Section4Calc(); UpdateVars();
-  CalcW(79); Section4Calc(); UpdateVars();
-  
-  Digest  result;
-  
-  result.h[0] = H0 + a;
-  result.h[1] = H1 + b;
-  result.h[2] = H2 + c;
-  result.h[3] = H3 + d;
-  result.h[4] = H4 + e;
-  
-  return result;
-}
-
 
 uint32_t SwapEndianess(uint32_t value)
 {
@@ -613,16 +461,6 @@ void MakeMessage(uint32_t message[], const HashedSeed::Parameters &parameters)
   message[15] = 0x000001A0; // 416
 }
 
-uint64_t CalcRawSeed(const uint32_t *message)
-{
-  Digest d = SHA1(message);
-  
-  uint64_t  preSeed = SwapEndianess(d.h[1]);
-  preSeed = (preSeed << 32) | SwapEndianess(d.h[0]);
-  
-  return LCRNG5(preSeed).Next();
-}
-
 }
 
 
@@ -630,26 +468,15 @@ HashedSeedMessage::HashedSeedMessage(const HashedSeed::Parameters &parameters,
                                      uint32_t excludedSeasonMask)
   : m_parameters(parameters), m_message(),
     m_monthDays(parameters.date.end_of_month().day()),
-    m_excludedSeasonMask(excludedSeasonMask),
-    m_rawSeedCalculated(false)
+    m_excludedSeasonMask(excludedSeasonMask)
 {
   MakeMessage(m_message, parameters);
 }
 
 HashedSeed HashedSeedMessage::AsHashedSeed() const
 {
-  return HashedSeed(m_parameters, GetRawSeed());
-}
-
-uint64_t HashedSeedMessage::GetRawSeed() const
-{
-  if (!m_rawSeedCalculated)
-  {
-    m_rawSeed = CalcRawSeed(m_message);
-    m_rawSeedCalculated = true;
-  }
-  
-  return m_rawSeed;
+  return HashedSeed(m_parameters,
+                    HashedSeedCalculator::CalculateRawSeed(*this));
 }
 
 void HashedSeedMessage::SetMACAddress(uint64_t macAddress)
@@ -659,7 +486,6 @@ void HashedSeedMessage::SetMACAddress(uint64_t macAddress)
                  (macAddress >> 16);
   
   m_parameters.macAddress = macAddress;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetVCount(uint32_t vcount)
@@ -668,7 +494,6 @@ void HashedSeedMessage::SetVCount(uint32_t vcount)
                  ((vcount & 0xff) << 8) | (vcount >> 8);
   
   m_parameters.vcount = vcount;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetVFrame(uint32_t vframe)
@@ -676,7 +501,6 @@ void HashedSeedMessage::SetVFrame(uint32_t vframe)
   m_message[7] = (m_message[7] ^ (m_parameters.vframe << 24)) ^ (vframe << 24);
   
   m_parameters.vframe = vframe;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetTimer0(uint32_t timer0)
@@ -685,7 +509,6 @@ void HashedSeedMessage::SetTimer0(uint32_t timer0)
                  ((timer0 & 0xff) << 24) | ((timer0 & 0xff00) << 8);
   
   m_parameters.timer0 = timer0;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetDate(boost::gregorian::date d)
@@ -697,7 +520,6 @@ void HashedSeedMessage::SetDate(boost::gregorian::date d)
   
   m_monthDays = d.end_of_month().day();
   m_parameters.date = d;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::NextDay()
@@ -771,8 +593,6 @@ void HashedSeedMessage::NextDay()
   {
     m_message[8] = (m_message[8] & 0xfffff000) | (dayOnesDigit << 8) | dow;
   }
-  
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetHour(uint32_t hour)
@@ -783,7 +603,6 @@ void HashedSeedMessage::SetHour(uint32_t hour)
          0x40 : 0)) << 24);
   
   m_parameters.hour = hour;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::NextHour()
@@ -818,8 +637,6 @@ void HashedSeedMessage::NextHour()
       m_message[9] = (m_message[9] & 0xf0ffffff) | (onesDigit << 24);
     }
   }
-  
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetMinute(uint32_t minute)
@@ -827,7 +644,6 @@ void HashedSeedMessage::SetMinute(uint32_t minute)
   m_message[9] = (m_message[9] & 0xff00ffff) | (ToBCD(minute) << 16);
   
   m_parameters.minute = minute;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::NextMinute()
@@ -858,8 +674,6 @@ void HashedSeedMessage::NextMinute()
       m_message[9] = (m_message[9] & 0xfff0ffff) | (onesDigit << 16);
     }
   }
-  
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetSecond(uint32_t second)
@@ -867,7 +681,6 @@ void HashedSeedMessage::SetSecond(uint32_t second)
   m_message[9] = (m_message[9] & 0xffff00ff) | (ToBCD(second) << 8);
   
   m_parameters.second = second;
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::NextSecond()
@@ -898,8 +711,6 @@ void HashedSeedMessage::NextSecond()
       m_message[9] = (m_message[9] & 0xfffff0ff) | (onesDigit << 8);
     }
   }
-  
-  m_rawSeedCalculated = false;
 }
 
 void HashedSeedMessage::SetHeldButtons(uint32_t heldButtons)
@@ -908,8 +719,6 @@ void HashedSeedMessage::SetHeldButtons(uint32_t heldButtons)
   
   heldButtons = heldButtons ^ ButtonMask;
   m_message[12] = ((heldButtons & 0xff) << 24) | ((heldButtons & 0xff00) << 8);
-  
-  m_rawSeedCalculated = false;
 }
 
 }

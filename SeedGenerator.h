@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 chiizu
+  Copyright (C) 2011-2014 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -226,6 +226,8 @@ public:
   std::list<HashedSeedGenerator>  Split(uint32_t parts);
   
 private:
+  void AdvanceMessageParameters();
+  
   const HashedSeedGenerator::Parameters  m_parameters;
   const SeedCountType                    m_seedsPerChunk;
   
@@ -233,6 +235,15 @@ private:
   
   uint32_t                               m_timer0, m_vcount, m_vframe;
   Button::List::const_iterator           m_heldButtonsIter;
+  
+#ifdef __ARM_NEON__
+  HashedSeed::Parameters        m_seedParameters;
+  
+  Button::List::const_iterator  m_paramsHeldButtonsIter;
+  
+  uint64_t  m_rawSeeds[4];
+  uint32_t  m_index;
+#endif
 };
 
 }

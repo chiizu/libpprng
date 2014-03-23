@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 chiizu
+  Copyright (C) 2011-2014 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -33,13 +33,14 @@ namespace pprng
 class HashedSeedMessage
 {
 public:
+  typedef uint32_t  MessageData[16];
+  
   HashedSeedMessage(const HashedSeed::Parameters &parameters,
                     uint32_t excludedSeasonMask);
   
-  HashedSeed AsHashedSeed() const;
+  const MessageData& GetMessageData() const { return m_message; }
   
-  // calculated raw seed
-  uint64_t GetRawSeed() const;
+  HashedSeed AsHashedSeed() const;
   
   uint64_t GetMACAddress() const { return m_parameters.macAddress; }
   void SetMACAddress(uint64_t macAddress);
@@ -74,13 +75,9 @@ public:
   
 private:
   HashedSeed::Parameters  m_parameters;
-  uint32_t                m_message[16];
+  MessageData             m_message;
   uint32_t                m_monthDays;
   uint32_t                m_excludedSeasonMask;
-  
-  // actual seed calculated lazily
-  mutable bool      m_rawSeedCalculated;
-  mutable uint64_t  m_rawSeed;
 };
 
 }

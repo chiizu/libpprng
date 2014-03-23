@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 chiizu
+  Copyright (C) 2011-2014 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -20,9 +20,9 @@
 
 
 #include "SeedGenerator.h"
-#include "HashedSeed.h"
+
+#include "HashedSeedCalculator.h"
 #include "LinearCongruentialRNG.h"
-#include <iostream>
 
 using namespace boost::posix_time;
 using namespace boost::gregorian;
@@ -156,6 +156,12 @@ HashedSeedGenerator::HashedSeedGenerator
   m_timer0(parameters.timer0High), m_vcount(parameters.vcountHigh),
   m_vframe(parameters.vframeHigh),
   m_heldButtonsIter(m_parameters.heldButtons.end() - 1)
+#ifdef __ARM_NEON__
+  ,
+  m_seedParameters(parameters.ToInitialSeedParameters()),
+  m_paramsHeldButtonsIter(m_heldButtonsIter),
+  m_index(4)
+#endif
 {}
 
 HashedSeedGenerator::HashedSeedGenerator(const HashedSeedGenerator &other)
@@ -165,7 +171,20 @@ HashedSeedGenerator::HashedSeedGenerator(const HashedSeedGenerator &other)
   m_heldButtonsIter(m_parameters.heldButtons.begin() +
                     (other.m_heldButtonsIter -
                      other.m_parameters.heldButtons.begin()))
-{}
+#ifdef __ARM_NEON__
+  ,
+  m_seedParameters(other.m_seedParameters),
+  m_paramsHeldButtonsIter(m_parameters.heldButtons.begin() +
+                          (other.m_paramsHeldButtonsIter -
+                           other.m_parameters.heldButtons.begin())),
+  m_index(other.m_index)
+#endif
+{
+#ifdef __ARM_NEON__
+  for (int i = 0; i < 4; ++i)
+    m_rawSeeds[i] = other.m_rawSeeds[i];
+#endif
+}
 
 HashedSeed::Parameters
   HashedSeedGenerator::Parameters::ToInitialSeedParameters() const
@@ -365,7 +384,7 @@ void HashedSeedGenerator::SkipSeeds(uint64_t numSeeds)
 }
 
 
-HashedSeedGenerator::SeedType HashedSeedGenerator::Next()
+void HashedSeedGenerator::AdvanceMessageParameters()
 {
   if (++m_heldButtonsIter == m_parameters.heldButtons.end())
   {
@@ -396,46 +415,88 @@ HashedSeedGenerator::SeedType HashedSeedGenerator::Next()
   }
   
   m_seedMessage.SetHeldButtons(*m_heldButtonsIter);
+}
+
+
+HashedSeedGenerator::SeedType HashedSeedGenerator::Next()
+{
+#ifdef __ARM_NEON__
+  if (m_index > 3)
+  {
+    // calculate next four seeds
+    HashedSeedCalculator::MessageVariables  vars;
+    
+    for (int i = 0; i < 4; ++i)
+    {
+      AdvanceMessageParameters();
+      
+      const HashedSeedMessage::MessageData  &d(m_seedMessage.GetMessageData());
+      
+      vars.m5[i] = d[5];
+      vars.m7[i] = d[7];
+      vars.m8[i] = d[8];
+      vars.m9[i] = d[9];
+      vars.m12[i] = d[12];
+    }
+    
+    HashedSeedCalculator::CalculateRawSeeds(m_seedMessage, vars, m_rawSeeds);
+    m_index = 0;
+  }
+  
+  // update parameters for next seed
+  if (++m_paramsHeldButtonsIter == m_parameters.heldButtons.end())
+  {
+    m_paramsHeldButtonsIter = m_parameters.heldButtons.begin();
+    
+    if (++m_seedParameters.timer0 > m_parameters.timer0High)
+    {
+      m_seedParameters.timer0 = m_parameters.timer0Low;
+      
+      if (++m_seedParameters.vcount > m_parameters.vcountHigh)
+      {
+        m_seedParameters.vcount = m_parameters.vcountLow;
+        
+        if (++m_seedParameters.vframe > m_parameters.vframeHigh)
+        {
+          m_seedParameters.vframe = m_parameters.vframeLow;
+          
+          if (++m_seedParameters.second > 59)
+          {
+            m_seedParameters.second = 0;
+            
+            if (++m_seedParameters.minute > 59)
+            {
+              m_seedParameters.minute = 0;
+              
+              if (++m_seedParameters.hour > 23)
+              {
+                m_seedParameters.hour = 0;
+                
+                m_seedParameters.date = m_seedParameters.date +
+                  boost::gregorian::days(1);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  m_seedParameters.heldButtons = *m_paramsHeldButtonsIter;
+  
+  // return cached seed with parameters
+  return HashedSeed(m_seedParameters, m_rawSeeds[m_index++]);
+  
+#else
+  
+  AdvanceMessageParameters();
   
   HashedSeed  seed = m_seedMessage.AsHashedSeed();
   
   return seed;
+#endif
 }
 
-/*
-std::list<HashedSeedGenerator> HashedSeedGenerator::Split(uint32_t parts)
-{
-  std::list<HashedSeedGenerator>  result;
-  
-  HashedSeedGenerator::Parameters  p = m_parameters;
-  
-  uint32_t  totalSeconds =
-    (m_parameters.toTime - m_parameters.fromTime).total_seconds() + 1;
-  
-  if (parts > totalSeconds)
-    parts = totalSeconds;
-  
-  uint32_t  partSeconds = (totalSeconds + parts - 1) / parts;
-  seconds   delta(partSeconds);
-  ptime     fromTime = m_parameters.fromTime;
-  ptime     toTime = fromTime + seconds(partSeconds - 1);
-  
-  for (uint32_t i = 0; i < parts; ++i)
-  {
-    p.fromTime = fromTime;
-    p.toTime = toTime;
-    
-    HashedSeedGenerator  part(p);
-    
-    result.push_back(part);
-    
-    fromTime = fromTime + delta;
-    toTime = (i == (parts - 1)) ? m_parameters.toTime : toTime + delta;
-  }
-  
-  return result;
-}
-*/
 
 std::list<HashedSeedGenerator> HashedSeedGenerator::Split(uint32_t parts)
 {

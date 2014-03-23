@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011-2012 chiizu
+  Copyright (C) 2011-2014 chiizu
   chiizu.pprng@gmail.com
   
   This file is part of libpprng.
@@ -121,7 +121,8 @@ static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Color color,
 }
 
 HashedSeed::HashedSeed(const HashedSeed::Parameters &p)
-  : parameters(p), rawSeed(HashedSeedMessage(parameters, 0).GetRawSeed()),
+  : parameters(p),
+    rawSeed(HashedSeedMessage(parameters, 0).AsHashedSeed().rawSeed),
     m_skippedPIDFramesCalculated(false),
     m_skippedPIDFramesMemoryLinkUsed(false),
     m_skippedPIDFrames(0), m_skippedPIDFramesSeed(0)
