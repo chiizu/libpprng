@@ -1245,6 +1245,33 @@ struct Encounter
     }
   }
   
+  static bool TrainerIdAffectsPID(Type t)
+  {
+    switch (t)
+    {
+    case STARTER_FOSSIL_GIFT:
+    case ROAMER:
+    case LARVESTA_EGG:
+    case ENTRALINK:
+    case HIDDEN_GROTTO:
+      return false;
+      
+    case STATIONARY:
+    case GRASS_CAVE:
+    case SURFING:
+    case FISHING:
+    case SWARM:
+    case DOUBLES_GRASS:
+    case SHAKING_GRASS:
+    case SWIRLING_DUST:
+    case BRIDGE_SHADOW:
+    case WATER_SPOT_SURFING:
+    case WATER_SPOT_FISHING:
+    default:
+      return true;
+    }
+  }
+  
   static ESV::Type SlotType(Type t)
   {
     switch (t)
