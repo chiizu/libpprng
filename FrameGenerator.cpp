@@ -102,7 +102,7 @@ Gen5PIDFrameGenerator::Gen5PIDFrameGenerator
   : m_PIDGenerator(s_FrameGeneratorInfo[parameters.encounterType].pidGenerator),
     m_PIDFrameGenerator
       (s_FrameGeneratorInfo[parameters.encounterType].pidFrameGenerator),
-    m_ESVGenerator(Game::IsBlack2White2(m_frame.seed.parameters.gameColor) ?
+    m_ESVGenerator(Game::IsBlack2White2(seed.parameters.gameColor) ?
                    s_FrameGeneratorInfo[parameters.encounterType]
                      .b2w2EsvGenerator :
                    s_FrameGeneratorInfo[parameters.encounterType]
