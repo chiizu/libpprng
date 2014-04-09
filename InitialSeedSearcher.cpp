@@ -61,7 +61,7 @@ void InitialIVSeedSearcher::Search
   searcher.Search(c, resultHandler, statusHandler, startingSeeds);
 }
 
-uint64_t B2W2InitialSeedSearcher::Criteria::ExpectedNumberOfResults() const
+uint64_t SpinnerInitialSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
   if (numSeeds == 0)
@@ -75,42 +75,47 @@ uint64_t B2W2InitialSeedSearcher::Criteria::ExpectedNumberOfResults() const
 namespace
 {
 
-struct B2W2InitialSeedChecker
+struct SpinnerInitialSeedChecker
 {
   typedef HashedSeed  ResultType;
   
-  B2W2InitialSeedChecker(const SpinnerPositions &spins, bool memoryLinkUsed)
-    : m_spins(spins), m_memoryLinkUsed(memoryLinkUsed)
+  SpinnerInitialSeedChecker(const SpinnerPositions &spins, bool memoryLinkUsed,
+                            SpinnerPositions::Mode mode)
+    : m_spins(spins), m_memoryLinkUsed(memoryLinkUsed), m_mode(mode)
   {}
   
   bool operator()(const HashedSeed &seed) const
   {
-    SpinnerPositions  seedSpins(seed, m_memoryLinkUsed, m_spins.NumSpins());
+    SpinnerPositions  seedSpins(seed, m_memoryLinkUsed, m_mode,
+                                m_spins.NumSpins());
     
     return seedSpins.word == m_spins.word;
   }
   
-  void Search(const HashedSeed &seed, const B2W2InitialSeedChecker &checker,
-              const B2W2InitialSeedSearcher::ResultCallback &resultHandler)
+  void Search(const HashedSeed &seed, const SpinnerInitialSeedChecker &checker,
+              const SpinnerInitialSeedSearcher::ResultCallback &resultHandler)
   {
     if (checker(seed))
       resultHandler(seed);
   }
   
-  const SpinnerPositions  m_spins;
-  const bool              m_memoryLinkUsed;
+  const SpinnerPositions        m_spins;
+  const bool                    m_memoryLinkUsed;
+  const SpinnerPositions::Mode  m_mode;
 };
 
 }
 
-void B2W2InitialSeedSearcher::Search
+void SpinnerInitialSeedSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
    SearchRunner::StatusHandler &statusHandler,
    const std::vector<uint64_t> &startingSeeds)
 {
-  HashedSeedGenerator     seedGenerator(criteria.seedParameters);
-  B2W2InitialSeedChecker  seedChecker(criteria.spins, criteria.memoryLinkUsed);
-  SearchRunner            searcher;
+  HashedSeedGenerator        seedGenerator(criteria.seedParameters);
+  SpinnerInitialSeedChecker  seedChecker(criteria.spins,
+                                         criteria.memoryLinkUsed,
+                                         criteria.mode);
+  SearchRunner               searcher;
   
   if (startingSeeds.size() > 0)
     searcher.ContinueSearchThreaded(seedGenerator, seedChecker, seedChecker,

@@ -1248,7 +1248,8 @@ HGSSRoamers::HGSSRoamers(uint32_t seed, uint32_t raikouLocation,
 namespace
 {
 
-uint64_t GenerateSpinnerPositions(LCRNG5 &rng, uint32_t numSpins)
+uint64_t GenerateSpinnerPositions(LCRNG5 &rng, SpinnerPositions::Mode mode,
+                                  uint32_t numSpins)
 {
   uint64_t  word = 0;
   
@@ -1256,7 +1257,9 @@ uint64_t GenerateSpinnerPositions(LCRNG5 &rng, uint32_t numSpins)
   {
     word = word |
       (uint64_t(SpinnerPositions::CalcPosition(rng.Next())) << (i * 3));
-    rng.Next();
+    
+    if (mode == SpinnerPositions::UnovaLinkSpinner)
+      rng.Next();
   }
   
   word = word | (uint64_t(numSpins) << SpinnerPositions::SPIN_COUNT_SHIFT);
@@ -1266,27 +1269,27 @@ uint64_t GenerateSpinnerPositions(LCRNG5 &rng, uint32_t numSpins)
 
 }
 
-SpinnerPositions::SpinnerPositions(uint64_t seed, uint32_t numSpins)
+SpinnerPositions::SpinnerPositions(uint64_t seed, Mode mode, uint32_t numSpins)
   : word(0)
 {
   LCRNG5  rng(seed);
   
-  word = GenerateSpinnerPositions(rng, numSpins);
+  word = GenerateSpinnerPositions(rng, mode, numSpins);
 }
 
 
 SpinnerPositions::SpinnerPositions(const HashedSeed &seed, bool memoryLinkUsed,
-                                   uint32_t numSpins)
+                                   Mode mode, uint32_t numSpins)
   : word(0)
 {
   LCRNG5  rng(0);
   
   seed.SeedAndSkipPIDFrames(rng, memoryLinkUsed);
   
-  if (!memoryLinkUsed)
+  if ((mode == UnovaLinkSpinner) && !memoryLinkUsed)
     rng.Next();
   
-  word = GenerateSpinnerPositions(rng, numSpins);
+  word = GenerateSpinnerPositions(rng, mode, numSpins);
 }
 
 }

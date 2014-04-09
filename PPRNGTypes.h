@@ -1596,6 +1596,12 @@ struct SpinnerPositions
   static Position CalcPosition(uint64_t rawRNG)
   { return Position(rawRNG >> 61); }
   
+  enum Mode
+  {
+    SaveSpinner = 0,
+    UnovaLinkSpinner
+  };
+  
   enum
   {
     SPIN_COUNT_SHIFT = 57,
@@ -1604,9 +1610,9 @@ struct SpinnerPositions
   };
   
   SpinnerPositions() : word(0) {}
-  SpinnerPositions(uint64_t seed, uint32_t numSpins);
+  SpinnerPositions(uint64_t seed, Mode mode, uint32_t numSpins);
   explicit SpinnerPositions(uint64_t w) : word(w) {}
-  SpinnerPositions(const HashedSeed &seed, bool memoryLinkUsed,
+  SpinnerPositions(const HashedSeed &seed, bool memoryLinkUsed, Mode mode,
                    uint32_t numSpins = MAX_SPINS);
   
   uint32_t NumSpins() const

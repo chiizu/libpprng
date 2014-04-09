@@ -52,22 +52,21 @@ public:
   typedef HashedSeedSearcher::ResultType        ResultType;
   typedef HashedSeedSearcher::ResultCallback    ResultCallback;
   
-  InitialIVSeedSearcher() {}
-  
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
               SearchRunner::StatusHandler &statusHandler,
               const std::vector<uint64_t> &startingSeeds =
                 std::vector<uint64_t>());
 };
 
-class B2W2InitialSeedSearcher
+class SpinnerInitialSeedSearcher
 {
 public:
   struct Criteria : public SearchCriteria
   {
     HashedSeedGenerator::Parameters  seedParameters;
-    bool              memoryLinkUsed;
-    SpinnerPositions  spins;
+    bool                             memoryLinkUsed;
+    SpinnerPositions::Mode           mode;
+    SpinnerPositions                 spins;
     
     Criteria()
       : seedParameters(), memoryLinkUsed(false), spins()
@@ -78,8 +77,6 @@ public:
   
   typedef HashedSeed                                 ResultType;
   typedef boost::function<void (const ResultType&)>  ResultCallback;
-  
-  B2W2InitialSeedSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
               SearchRunner::StatusHandler &statusHandler,
