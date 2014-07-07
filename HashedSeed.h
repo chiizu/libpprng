@@ -56,6 +56,10 @@ public:
         timer0(0), vcount(0), vframe(0), date(),
         hour(0), minute(0), second(0), heldButtons(0)
     {}
+    
+    // returns true if the date jumped ahead by more than one day
+    //  because of an excluded season
+    bool NextDate(uint32_t excludedSeasonMask);
   };
   
   explicit HashedSeed(const Parameters &parameters);

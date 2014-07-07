@@ -120,6 +120,26 @@ static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Color color,
 
 }
 
+bool HashedSeed::Parameters::NextDate(uint32_t excludedSeasonMask)
+{
+  date = date + boost::gregorian::days(1);
+  
+  if ((excludedSeasonMask != 0) &&
+      (date.day() == 1) &&
+      (Season::MaskForMonth(date.month()) & excludedSeasonMask) != 0)
+  {
+    do
+    {
+      date = date + boost::gregorian::months(1);
+    }
+    while ((Season::MaskForMonth(date.month()) & excludedSeasonMask) != 0);
+    
+    return true;
+  }
+  
+  return false;
+}
+
 HashedSeed::HashedSeed(const HashedSeed::Parameters &p)
   : parameters(p),
     rawSeed(HashedSeedMessage(parameters, 0).AsHashedSeed().rawSeed),

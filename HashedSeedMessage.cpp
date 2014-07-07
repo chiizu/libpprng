@@ -524,7 +524,12 @@ void HashedSeedMessage::SetDate(boost::gregorian::date d)
 
 void HashedSeedMessage::NextDay()
 {
-  m_parameters.date = m_parameters.date + days(1);
+  if (m_parameters.NextDate(m_excludedSeasonMask))
+  {
+    // a month is being excluded, so resetting the whole value is simpler
+    SetDate(m_parameters.date);
+    return;
+  }
   
   uint32_t  dayInfo = m_message[8] & 0xffff;
   uint32_t  dayOnesDigit = (dayInfo >> 8) & 0xf;
@@ -537,49 +542,35 @@ void HashedSeedMessage::NextDay()
   
   if (dayInt == m_monthDays)
   {
-    if ((m_excludedSeasonMask != 0) &&
-        (Season::MaskForMonth(m_parameters.date.month()) &
-         m_excludedSeasonMask) != 0)
+    dayInfo = 0x0100 | dow;
+    m_monthDays = m_parameters.date.end_of_month().day();
+    
+    uint32_t  monthInfo = (m_message[8] >> 16) & 0xff;
+    
+    if (monthInfo == 0x12)
     {
-      do
+      monthInfo = 0x01;
+      
+      uint32_t  yearInfo = (m_message[8] >> 24) & 0xff;
+      
+      if ((++yearInfo & 0xf) > 9)
       {
-        SetDate(m_parameters.date + months(1));
+        yearInfo = (yearInfo & 0xf0) + 0x10;
+        if (yearInfo >= 0xa0)
+          yearInfo = 0x00;
       }
-      while ((Season::MaskForMonth(m_parameters.date.month()) &
-              m_excludedSeasonMask) != 0);
+      
+      m_message[8] = (yearInfo << 24) | (monthInfo << 16) | dayInfo;
     }
     else
     {
-      dayInfo = 0x0100 | dow;
-      m_monthDays = m_parameters.date.end_of_month().day();
-      
-      uint32_t  monthInfo = (m_message[8] >> 16) & 0xff;
-      
-      if (monthInfo == 0x12)
+      if (++monthInfo == 0xA)
       {
-        monthInfo = 0x01;
-        
-        uint32_t  yearInfo = (m_message[8] >> 24) & 0xff;
-        
-        if ((++yearInfo & 0xf) > 9)
-        {
-          yearInfo = (yearInfo & 0xf0) + 0x10;
-          if (yearInfo >= 0xa0)
-            yearInfo = 0x00;
-        }
-        
-        m_message[8] = (yearInfo << 24) | (monthInfo << 16) | dayInfo;
+        monthInfo = 0x10;
       }
-      else
-      {
-        if (++monthInfo == 0xA)
-        {
-          monthInfo = 0x10;
-        }
-        
-        m_message[8] = (m_message[8] & 0xff000000) | (monthInfo << 16) |
-                       dayInfo;
-      }
+      
+      m_message[8] = (m_message[8] & 0xff000000) | (monthInfo << 16) |
+                     dayInfo;
     }
   }
   else if (++dayOnesDigit > 9)

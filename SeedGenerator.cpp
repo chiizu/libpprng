@@ -158,7 +158,7 @@ HashedSeedGenerator::HashedSeedGenerator
   m_heldButtonsIter(m_parameters.heldButtons.end() - 1)
 #ifdef __ARM_NEON__
   ,
-  m_seedParameters(parameters.ToInitialSeedParameters()),
+  m_seedParameters(m_seedMessage.GetParameters()),
   m_paramsHeldButtonsIter(m_heldButtonsIter),
   m_index(4)
 #endif
@@ -381,6 +381,12 @@ void HashedSeedGenerator::SkipSeeds(uint64_t numSeeds)
   m_heldButtonsIter = m_parameters.heldButtons.begin() + newButtonPos;
   
   m_seedMessage.SetHeldButtons(*m_heldButtonsIter);
+  
+#ifdef __ARM_NEON__
+  m_seedParameters = m_seedMessage.GetParameters();
+  m_paramsHeldButtonsIter = m_heldButtonsIter;
+  m_index = 4;
+#endif
 }
 
 
@@ -472,8 +478,7 @@ HashedSeedGenerator::SeedType HashedSeedGenerator::Next()
               {
                 m_seedParameters.hour = 0;
                 
-                m_seedParameters.date = m_seedParameters.date +
-                  boost::gregorian::days(1);
+                m_seedParameters.NextDate(m_parameters.excludedSeasonMask);
               }
             }
           }

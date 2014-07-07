@@ -40,6 +40,8 @@ public:
   
   const MessageData& GetMessageData() const { return m_message; }
   
+  const HashedSeed::Parameters& GetParameters() const { return m_parameters; }
+  
   HashedSeed AsHashedSeed() const;
   
   uint64_t GetMACAddress() const { return m_parameters.macAddress; }
