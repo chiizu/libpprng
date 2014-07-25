@@ -193,13 +193,14 @@ public:
     boost::posix_time::ptime  fromTime, toTime;
     uint32_t                  excludedSeasonMask;
     Button::List              heldButtons;
+    bool                      isSoftReset;
     
     Parameters()
       : gameColor(Game::Color(0)), gameLanguage(Game::Language(0)),
         consoleType(Console::Type(0)), macAddress(0),
         timer0Low(0), timer0High(0), vcountLow(0), vcountHigh(0),
         vframeLow(0), vframeHigh(0), fromTime(), toTime(),
-        excludedSeasonMask(0), heldButtons()
+        excludedSeasonMask(0), heldButtons(), isSoftReset(false)
     {}
     
     HashedSeed::Parameters ToInitialSeedParameters() const;

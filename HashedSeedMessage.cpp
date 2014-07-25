@@ -52,11 +52,6 @@ uint32_t ToBCD(uint32_t value)
          (value - (allTens * 10));
 }
 
-enum GxStat
-{
-  HardResetGxStat = 0x06000000
-};
-
 enum Nazo
 {
   // Black / White
@@ -406,6 +401,11 @@ enum
   
   BW2NazoOffset = 0x54,
   
+  HardResetGxStat = 0x00000006,
+  SoftResetGxStat = 0x00000086,
+  
+  SoftResetTickCount = 0x01000000,
+  
   ButtonMask = 0x2FFF
 };
 
@@ -436,8 +436,17 @@ void MakeMessage(uint32_t message[], const HashedSeed::Parameters &parameters)
   
   message[6] = parameters.macAddress & 0xffff;
   
-  message[7] = (parameters.macAddress >> 16) ^
-               SwapEndianess(HardResetGxStat ^ parameters.vframe);
+  message[7] = (parameters.macAddress >> 16) ^ (parameters.vframe << 24);
+  
+  if (parameters.softResetted)
+  {
+    message[6] ^= SoftResetTickCount;
+    message[7] ^= SoftResetGxStat;
+  }
+  else
+  {
+    message[7] ^= HardResetGxStat;
+  }
   
   message[8] = ((ToBCD(parameters.date.year()) & 0xff) << 24) |
                ((ToBCD(parameters.date.month()) & 0xff) << 16) |
@@ -481,9 +490,10 @@ HashedSeed HashedSeedMessage::AsHashedSeed() const
 
 void HashedSeedMessage::SetMACAddress(uint64_t macAddress)
 {
-  m_message[6] = macAddress & 0xffff;
-  m_message[7] = (m_message[7] ^ (m_parameters.macAddress >> 16)) ^
-                 (macAddress >> 16);
+  m_message[6] ^= (m_parameters.macAddress & 0xffff) ^
+                  (macAddress & 0xffff);
+  m_message[7] ^= (m_parameters.macAddress >> 16) ^
+                  (macAddress >> 16);
   
   m_parameters.macAddress = macAddress;
 }
@@ -498,7 +508,7 @@ void HashedSeedMessage::SetVCount(uint32_t vcount)
 
 void HashedSeedMessage::SetVFrame(uint32_t vframe)
 {
-  m_message[7] = (m_message[7] ^ (m_parameters.vframe << 24)) ^ (vframe << 24);
+  m_message[7] ^= (m_parameters.vframe << 24) ^ (vframe << 24);
   
   m_parameters.vframe = vframe;
 }
@@ -708,8 +718,24 @@ void HashedSeedMessage::SetHeldButtons(uint32_t heldButtons)
 {
   m_parameters.heldButtons = heldButtons;
   
-  heldButtons = heldButtons ^ ButtonMask;
+  heldButtons ^= ButtonMask;
   m_message[12] = ((heldButtons & 0xff) << 24) | ((heldButtons & 0xff00) << 8);
+}
+
+void HashedSeedMessage::SetSoftResetted(bool softResetted)
+{
+  if (softResetted != m_parameters.softResetted)
+    FlipSoftResetted();
+}
+
+bool HashedSeedMessage::FlipSoftResetted()
+{
+  m_parameters.softResetted = !m_parameters.softResetted;
+  
+  m_message[6] ^= SoftResetTickCount;
+  m_message[7] ^= SoftResetGxStat ^ HardResetGxStat;
+  
+  return m_parameters.softResetted;
 }
 
 }

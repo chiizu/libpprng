@@ -75,6 +75,10 @@ public:
   uint32_t GetHeldButtons() const { return m_parameters.heldButtons; }
   void SetHeldButtons(uint32_t heldButtons);
   
+  bool GetSoftResetted() const { return m_parameters.softResetted; }
+  void SetSoftResetted(bool softResetted);
+  bool FlipSoftResetted();
+  
 private:
   HashedSeed::Parameters  m_parameters;
   MessageData             m_message;

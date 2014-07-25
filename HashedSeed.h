@@ -42,19 +42,22 @@ public:
     boost::gregorian::date  date;
     uint32_t                hour, minute, second;
     uint32_t                heldButtons;
+    bool                    softResetted;
     
     Parameters()
       : gameColor(Game::Color(0)), gameLanguage(Game::Language(0)),
         consoleType(Console::Type(0)), macAddress(),
         timer0(0), vcount(0), vframe(0), date(),
-        hour(0), minute(0), second(0), heldButtons(0)
+        hour(0), minute(0), second(0), heldButtons(0),
+        softResetted(false)
     {}
     
     Parameters(Game::Color color, Game::Language language)
       : gameColor(color), gameLanguage(language),
         consoleType(Console::Type(0)), macAddress(),
         timer0(0), vcount(0), vframe(0), date(),
-        hour(0), minute(0), second(0), heldButtons(0)
+        hour(0), minute(0), second(0), heldButtons(0),
+        softResetted(false)
     {}
     
     // returns true if the date jumped ahead by more than one day
@@ -99,9 +102,15 @@ public:
   
   Season::Type Season() const { return Season::ForMonth(month()); }
   
+  // initial PID advancements
   uint32_t SeedAndSkipPIDFrames(LCRNG5 &rng, bool memoryLinkUsed) const;
   
   uint32_t GetSkippedPIDFrames(bool memoryLinkUsed) const;
+  
+  // initial TID advancements
+  uint32_t SeedAndSkipTIDFrames(LCRNG5 &rng, bool hasSaveFile) const;
+  
+  uint32_t GetSkippedTIDFrames(bool hasSaveFile) const;
   
 private:
   // skipped frames calculated lazily and cached

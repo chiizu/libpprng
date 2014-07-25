@@ -226,6 +226,8 @@ HashedSeed::Parameters
   parameters.minute = t.minutes();
   parameters.second = t.seconds();
   
+  parameters.softResetted = isSoftReset;
+  
   return parameters;
 }
 

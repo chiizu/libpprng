@@ -118,6 +118,54 @@ static uint32_t SkipPIDRNGFrames(LCRNG5 &rng, Game::Color color,
   return count;
 }
 
+
+static uint32_t SkipTIDRNGFrames(LCRNG5 &rng, Game::Color color,
+                                 bool hasSaveFile)
+{
+  uint32_t  count = 0;
+  
+  if (Game::IsBlack2White2(color))
+  {
+    count += ProbabilityTableLoop(rng);
+    
+    rng.Next(); // 0
+    rng.Next(); // 0xffffffff
+    count += 2;
+    
+    count += ProbabilityTableLoop(rng);
+    
+    rng.Next();
+    rng.Next();
+    rng.Next();
+    rng.Next();
+    count += 4;
+    
+    const uint32_t  rounds = hasSaveFile ? 2 : 1;
+    for (uint32_t i = 0; i < rounds; ++i)
+      count += ProbabilityTableLoop(rng);
+    
+    // three final calls
+    rng.Next();
+    rng.Next();
+    rng.Next();
+    count += 3;
+  }
+  else
+  {
+    const uint32_t  rounds = hasSaveFile ? 2 : 3;
+    
+    for (uint32_t i = 0; i < rounds; ++i)
+      count += ProbabilityTableLoop(rng);
+    
+    // three final calls
+    rng.Next();
+    rng.Next();
+    count += 2;
+  }
+  
+  return count;
+}
+
 }
 
 bool HashedSeed::Parameters::NextDate(uint32_t excludedSeasonMask)
@@ -183,6 +231,20 @@ uint32_t HashedSeed::GetSkippedPIDFrames(bool memoryLinkUsed) const
   {
     return m_skippedPIDFrames;
   }
+}
+
+uint32_t HashedSeed::SeedAndSkipTIDFrames(LCRNG5 &rng, bool hasSaveFile) const
+{
+  rng.Seed(rawSeed);
+  
+  return SkipTIDRNGFrames(rng, parameters.gameColor, hasSaveFile);
+}
+
+uint32_t HashedSeed::GetSkippedTIDFrames(bool hasSaveFile) const
+{
+  LCRNG5  rng(0);
+  
+  return SeedAndSkipTIDFrames(rng, hasSaveFile);
 }
 
 }
