@@ -199,8 +199,8 @@ void HashedSeedSearcher::Search
       (criteria.ivs.isRoamer && isBlack2White2))
   {
     FrameGeneratorFactory  frameGenFactory(criteria.ivs.isRoamer ?
-                                         HashedIVFrameGenerator::Roamer :
-                                         HashedIVFrameGenerator::Normal);
+                                           HashedIVFrameGenerator::Roamer :
+                                           HashedIVFrameGenerator::Normal);
   
     SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGenFactory,
                                                            criteria.ivFrame);
