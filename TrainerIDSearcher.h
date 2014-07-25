@@ -44,11 +44,7 @@ public:
     uint32_t  tid;
     bool      hasSID;
     uint32_t  sid;
-    bool      hasShinyPID;
-    PID       shinyPID;
-    bool      wildShiny;
-    bool      giftShiny;
-    bool      eggShiny;
+    bool      hasSaveFile;
     
     uint64_t ExpectedNumberOfResults() const;
   };
@@ -59,7 +55,9 @@ public:
   TrainerIDSearcher() {}
   
   void Search(const Criteria &criteria, const ResultCallback &resultHandler,
-              SearchRunner::StatusHandler &statusHandler);
+              SearchRunner::StatusHandler &statusHandler,
+              const std::vector<uint64_t> &startingSeeds =
+                std::vector<uint64_t>());
 };
 
 }

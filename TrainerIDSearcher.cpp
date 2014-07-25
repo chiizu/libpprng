@@ -31,38 +31,32 @@ namespace
 struct FrameChecker
 {
   FrameChecker(const TrainerIDSearcher::Criteria &criteria)
-    : m_criteria(criteria),
-      m_eggPID((uint64_t(criteria.shinyPID.word) * 0xFFFFFFFFULL) >> 32)
+    : m_criteria(criteria)
   {}
   
   bool operator()(const Gen5TrainerIDFrame &frame) const
   {
     return (!m_criteria.hasTID || (frame.tid == m_criteria.tid)) &&
-           (!m_criteria.hasSID || (frame.sid == m_criteria.sid)) &&
-           (!m_criteria.hasShinyPID ||
-            ((!m_criteria.giftShiny || frame.giftShiny) &&
-             (!m_criteria.wildShiny || frame.wildShiny) &&
-             (!m_criteria.eggShiny || frame.eggShiny)));
+           (!m_criteria.hasSID || (frame.sid == m_criteria.sid));
   }
   
   const TrainerIDSearcher::Criteria  &m_criteria;
-  const PID                          m_eggPID;
 };
 
 struct FrameGeneratorFactory
 {
   typedef Gen5TrainerIDFrameGenerator  FrameGenerator;
   
-  FrameGeneratorFactory(const PID &shinyPID)
-    : m_ShinyPID(shinyPID)
+  FrameGeneratorFactory(bool hasSavedFile)
+    : m_hasSavedFile(hasSavedFile)
   {}
   
   Gen5TrainerIDFrameGenerator operator()(const HashedSeed &seed) const
   {
-    return Gen5TrainerIDFrameGenerator(seed, m_ShinyPID);
+    return Gen5TrainerIDFrameGenerator(seed, m_hasSavedFile);
   }
   
-  const PID m_ShinyPID;
+  const bool  m_hasSavedFile;
 };
 
 }
@@ -77,18 +71,17 @@ uint64_t TrainerIDSearcher::Criteria::ExpectedNumberOfResults() const
   
   uint64_t  tidDivisor = hasTID ? 65536 : 1;
   uint64_t  sidDivisor = hasSID ? 65536 : 1;
-  uint64_t  shinyDivisor =
-    (hasShinyPID && (wildShiny || giftShiny || eggShiny)) ? 8192 : 1;
   
-  return (numFrames * numSeeds / (tidDivisor * sidDivisor * shinyDivisor)) + 1;
+  return (numFrames * numSeeds / (tidDivisor * sidDivisor)) + 1;
 }
 
 void TrainerIDSearcher::Search
   (const Criteria &criteria, const ResultCallback &resultHandler,
-   SearchRunner::StatusHandler &statusHandler)
+   SearchRunner::StatusHandler &statusHandler,
+   const std::vector<uint64_t> &startingSeeds)
 {
   HashedSeedGenerator    seedGenerator(criteria.seedParameters);
-  FrameGeneratorFactory  frameGeneratorFactory(criteria.shinyPID);
+  FrameGeneratorFactory  frameGeneratorFactory(criteria.hasSaveFile);
   
   SeedFrameSearcher<FrameGeneratorFactory>  seedSearcher(frameGeneratorFactory,
                                                          criteria.frame);
@@ -97,8 +90,13 @@ void TrainerIDSearcher::Search
   
   SearchRunner  searcher;
   
-  searcher.Search(seedGenerator, seedSearcher, frameChecker, resultHandler,
-                  statusHandler);
+  if (startingSeeds.size() > 0)
+    searcher.ContinueSearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                                    resultHandler, statusHandler,
+                                    startingSeeds);
+  else
+    searcher.SearchThreaded(seedGenerator, seedSearcher, frameChecker,
+                            resultHandler, statusHandler);
 }
 
 }

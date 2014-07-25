@@ -720,11 +720,10 @@ public:
   typedef Gen5TrainerIDFrame  Frame;
   typedef LCRNG5              RNG;
   
-  Gen5TrainerIDFrameGenerator(const HashedSeed &seed, const PID &shinyPID)
-    : m_RNG(seed.rawSeed), m_ShinyPID(shinyPID),
-      m_EggPID((uint64_t(shinyPID.word) * 0xFFFFFFFFULL) >> 32),
-      m_frame(seed)
+  Gen5TrainerIDFrameGenerator(const HashedSeed &seed, bool hasSaveFile)
+    : m_RNG(seed.rawSeed), m_frame(seed)
   {
+    seed.SeedAndSkipTIDFrames(m_RNG, hasSaveFile);
     m_frame.number = 0;
   }
   
@@ -740,24 +739,18 @@ public:
   void AdvanceFrame()
   {
     ++m_frame.number;
+    m_frame.rngValue = m_RNG.Next();
     
-    uint32_t  fullID = ((m_RNG.Next() >> 32) * 0xFFFFFFFFULL) >> 32;
+    uint32_t  fullID = ((m_frame.rngValue >> 32) * 0xFFFFFFFFULL) >> 32;
     m_frame.tid = fullID & 0xffff;
     m_frame.sid = fullID >> 16;
-    m_frame.wildShiny =
-      PID(Gen5PIDRNG::TIDBitTwiddle(m_ShinyPID.word, m_frame.tid, m_frame.sid))
-        .IsShiny(m_frame.tid, m_frame.sid);
-    m_frame.giftShiny = m_ShinyPID.IsShiny(m_frame.tid, m_frame.sid);
-    m_frame.eggShiny = m_EggPID.IsShiny(m_frame.tid, m_frame.sid);
   }
   
   const Frame& CurrentFrame() { return m_frame; }
   
 private:
-  RNG        m_RNG;
-  const PID  m_ShinyPID;
-  const PID  m_EggPID;
-  Frame      m_frame;
+  RNG    m_RNG;
+  Frame  m_frame;
 };
 
 class Gen5BreedingFrameGenerator

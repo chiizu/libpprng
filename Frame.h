@@ -212,8 +212,8 @@ struct Gen5TrainerIDFrame
   
   HashedSeed  seed;
   uint32_t    number;
+  uint64_t    rngValue;
   uint32_t    tid, sid;
-  bool        wildShiny, giftShiny, eggShiny;
 };
 
 struct Gen5BreedingFrame
