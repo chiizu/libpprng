@@ -73,8 +73,9 @@ uint64_t TrainerIDSearcher::Criteria::ExpectedNumberOfResults() const
   
   uint64_t  tidDivisor = hasTID ? 65536 : 1;
   uint64_t  sidDivisor = hasSID ? 65536 : 1;
+  uint64_t  shinyDivisor = hasShinyPID ? 8192 : 1;
   
-  return (numFrames * numSeeds / (tidDivisor * sidDivisor)) + 1;
+  return (numFrames * numSeeds / (tidDivisor * sidDivisor * shinyDivisor)) + 1;
 }
 
 void TrainerIDSearcher::Search
