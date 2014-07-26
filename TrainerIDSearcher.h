@@ -44,6 +44,8 @@ public:
     uint32_t  tid;
     bool      hasSID;
     uint32_t  sid;
+    bool      hasShinyPID;
+    uint32_t  shinyPID;
     bool      hasSaveFile;
     
     uint64_t ExpectedNumberOfResults() const;

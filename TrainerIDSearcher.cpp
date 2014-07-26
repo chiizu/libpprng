@@ -37,7 +37,9 @@ struct FrameChecker
   bool operator()(const Gen5TrainerIDFrame &frame) const
   {
     return (!m_criteria.hasTID || (frame.tid == m_criteria.tid)) &&
-           (!m_criteria.hasSID || (frame.sid == m_criteria.sid));
+           (!m_criteria.hasSID || (frame.sid == m_criteria.sid)) &&
+           (!m_criteria.hasShinyPID ||
+            (PID(m_criteria.shinyPID).IsShiny(frame.tid, frame.sid)));
   }
   
   const TrainerIDSearcher::Criteria  &m_criteria;
