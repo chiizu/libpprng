@@ -58,6 +58,14 @@ public:
     {}
     
     uint64_t ExpectedNumberOfResults() const;
+    
+    // thrown by ExpectedNumberOfResults if desired egg IVs cannot
+    // be generated from provided parent IVs
+    class ImpossibleEggIVsException : public Exception
+    {
+    public:
+      ImpossibleEggIVsException();
+    };
   };
   
   typedef Gen5EggFrame                               ResultType;

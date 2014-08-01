@@ -462,13 +462,18 @@ struct SeedSearcher
 
 }
 
+EggSeedSearcher::Criteria::ImpossibleEggIVsException::ImpossibleEggIVsException
+  ()
+  : Exception("Desired egg IVs are not possible with given parent IVs.")
+{}
+
 uint64_t EggSeedSearcher::Criteria::ExpectedNumberOfResults() const
 {
   std::vector<IVRange>  ivRanges =
     GenerateIVRanges(xParentIVs, yParentIVs, ivs.min, ivs.max);
   
   if (ivRanges.size() == 0)
-    return 0;
+    throw ImpossibleEggIVsException();
   
   uint64_t  numSeeds = seedParameters.NumberOfSeeds();
   if (numSeeds == 0)
