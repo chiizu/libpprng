@@ -436,7 +436,8 @@ void MakeMessage(uint32_t message[], const HashedSeed::Parameters &parameters)
   
   message[6] = parameters.macAddress & 0xffff;
   
-  message[7] = (parameters.macAddress >> 16) ^ (parameters.vframe << 24);
+  message[7] = uint32_t(parameters.macAddress >> 16) ^
+               (parameters.vframe << 24);
   
   if (parameters.softResetted)
   {

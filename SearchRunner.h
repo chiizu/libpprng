@@ -115,7 +115,7 @@ public:
                               const std::vector<uint64_t> &startingSeeds)
   {
     std::list<SeedGenerator>  generators =
-      seedGenerator.Split(startingSeeds.size());
+      seedGenerator.Split(uint32_t(startingSeeds.size()));
     
     SearchThreaded(generators, seedSearcher, resultChecker, resultHandler,
                    statusHandler, startingSeeds);
@@ -214,7 +214,7 @@ private:
     typedef typename SeedSearcher::ResultType  ResultType;
     typedef std::deque<ResultType>             ResultQueue;
     
-    uint32_t  numThreads = generators.size();
+    uint32_t  numThreads = uint32_t(generators.size());
     
     typename std::list<SeedGenerator>::iterator  sg = generators.begin();
     std::vector<uint64_t>::const_iterator        ss = startingSeeds.begin();

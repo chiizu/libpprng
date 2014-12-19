@@ -233,7 +233,7 @@ HashedSeed::Parameters
 
 uint32_t HashedSeedGenerator::Parameters::NumberOfSeconds() const
 {
-  SeedCountType  totalSeconds = 0;
+  uint32_t  totalSeconds = 0;
   
   if (excludedSeasonMask != 0)
   {
@@ -279,7 +279,7 @@ HashedSeedGenerator::SeedCountType HashedSeedGenerator::NumberOfSeeds() const
 }
 
 
-static ptime SkipSeconds(ptime dt, uint32_t skippedSeconds,
+static ptime SkipSeconds(ptime dt, uint64_t skippedSeconds,
                          uint32_t excludedSeasonMask)
 {
   if (excludedSeasonMask != 0)
@@ -288,7 +288,7 @@ static ptime SkipSeconds(ptime dt, uint32_t skippedSeconds,
     {
       date      d = dt.date();
       ptime     nextDT(d.end_of_month() + days(1), seconds(0));
-      uint32_t  monthSeconds = (nextDT - dt).total_seconds();
+      uint64_t  monthSeconds = (nextDT - dt).total_seconds();
       
       if ((Season::MaskForMonth(d.month()) & excludedSeasonMask) == 0)
       {
@@ -313,9 +313,9 @@ static ptime SkipSeconds(ptime dt, uint32_t skippedSeconds,
 void HashedSeedGenerator::SkipSeeds(uint64_t numSeeds)
 {
   uint64_t  numHeldButtons = m_parameters.heldButtons.size();
-  uint64_t  numTimer0 = (m_parameters.timer0High - m_parameters.timer0Low) + 1;
-  uint64_t  numVcount = (m_parameters.vcountHigh - m_parameters.vcountLow) + 1;
-  uint64_t  numVframe = (m_parameters.vframeHigh - m_parameters.vframeLow) + 1;
+  uint32_t  numTimer0 = (m_parameters.timer0High - m_parameters.timer0Low) + 1;
+  uint32_t  numVcount = (m_parameters.vcountHigh - m_parameters.vcountLow) + 1;
+  uint32_t  numVframe = (m_parameters.vframeHigh - m_parameters.vframeLow) + 1;
   
   uint64_t  divisor = numHeldButtons * numTimer0 * numVcount * numVframe;
   uint64_t  skippedSeconds = numSeeds / divisor;
@@ -369,7 +369,7 @@ void HashedSeedGenerator::SkipSeeds(uint64_t numSeeds)
   
   m_seedMessage.SetVCount(m_vcount);
   
-  uint32_t  newButtonPos =
+  uint64_t  newButtonPos =
     (m_heldButtonsIter - m_parameters.heldButtons.begin()) + skippedButtons;
   if (newButtonPos >= numHeldButtons)
     newButtonPos -= numHeldButtons;
