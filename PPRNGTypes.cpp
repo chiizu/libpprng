@@ -1061,11 +1061,11 @@ static const uint32_t GoodSuperFishingESVThresholdJ[] =
 static const uint32_t GoodSuperFishingESVThresholdK[] =
 { 39, 69, 84, 94, 99 };
 
-static const uint32_t BugContestESVThreshold[] =
-{ 19, 39, 49, 59, 69, 79, 84, 89, 94, 99 };
+//static const uint32_t BugContestESVThreshold[] =
+//{ 19, 39, 49, 59, 69, 79, 84, 89, 94, 99 };
 
-static const uint32_t SafariZoneESVThreshold[] =
-{ 9, 19, 29, 39, 49, 59, 69, 79, 89, 99 };
+//static const uint32_t SafariZoneESVThreshold[] =
+//{ 9, 19, 29, 39, 49, 59, 69, 79, 89, 99 };
 
 static uint32_t GetESV(uint32_t value, const uint32_t esvThreshold[])
 {
